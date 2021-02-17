@@ -3,11 +3,12 @@ package Network
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
+	"io/ioutil"
 )
 
 //List of connections
@@ -35,7 +36,7 @@ func listen() {
 	ln, err := net.Listen("tcp", ":")
 	_, port, _ := net.SplitHostPort(ln.Addr().String())
 
-	ipPort := getOutboundIP() + ":" + port
+	ipPort := getPublicIP() + ":" + port
 	fmt.Println("Listening on following connection: ", ipPort)
 
 	if err != nil {
@@ -72,6 +73,7 @@ func connect(ipPort string) {
 }
 
 // Inspired by https://stackoverflow.com/questions/23558425/how-do-i-get-the-local-ip-address-in-go
+/*
 func getOutboundIP() string {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	defer conn.Close()
@@ -83,4 +85,24 @@ func getOutboundIP() string {
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 
 	return localAddr.IP.String()
+}
+*/
+
+func getPublicIP() string {
+	url := "https://api.ipify.org?format=text"	// we are using a public IP API, we're using ipify here, below are some others
+	// https://www.ipify.org
+	// http://myexternalip.com
+	// http://api.ident.me
+	// http://whatismyipaddress.com/api
+	fmt.Printf("Getting IP address from  ipify ...\n")
+	resp, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	ip, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	return string(ip)
 }
