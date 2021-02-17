@@ -2,6 +2,7 @@ package Network
 
 import (
 	"bufio"
+	"encoding/gob"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -9,7 +10,15 @@ import (
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/google/uuid"
 )
+
+type Packet struct {
+	ID string
+	Type string
+	Connections []string
+}
 
 //List of connections
 var connections []net.Conn
@@ -55,9 +64,84 @@ func listen() {
 
 		fmt.Println("Accepted connection from:", conn.RemoteAddr())
 
+		go sendPeers(conn)
+		go handleConnection(conn)
+
 		connMutex.Lock()
 		connections = append(connections, conn)
 		connMutex.Unlock()
+
+		fmt.Println("I have the following connections:", connections)
+	}
+}
+
+func handleConnection(conn net.Conn) {
+	defer conn.Close()
+
+	for {
+		packet := Packet{}
+		decoder := gob.NewDecoder(conn)
+		err := decoder.Decode(&packet)
+
+		if err != nil {
+			fmt.Println("Connection error:", err.Error())
+			return
+		}
+
+		if packet.Type == "peerlist" {
+			go getPeers(packet.Connections)
+		}
+	}
+}
+
+func getPeers(conns []string) {
+	for _, ip := range conns {
+		if newIP(ip) {
+			connect(ip)
+		}
+	}
+}
+
+//TODO filter properly
+//Check if we already have a connection to this ip or if it is our own ip
+func newIP(ip string) bool {
+	connMutex.Lock()
+	for _, c := range connections {
+		if c.RemoteAddr().String() == ip {
+			return false
+		}
+	}
+	connMutex.Unlock()
+	if ip == getPublicIP() {
+		return false
+	}
+
+	return true
+}
+
+func sendPeers(conn net.Conn) {
+	encoder := gob.NewEncoder(conn)
+	connMutex.Lock()
+
+	var conns []string
+
+	for _, c := range connections {
+		if c == conn {
+			continue
+		}
+		conns = append(conns, c.RemoteAddr().String())
+	}
+
+	packet := Packet{
+		ID: uuid.Must(uuid.NewRandom()).String(),
+		Type: "peerlist",
+		Connections: conns,
+	}
+	connMutex.Unlock()
+	err := encoder.Encode(packet)
+
+	if err != nil {
+		fmt.Println("Failed to gob peer packet:", err.Error())
 	}
 }
 
@@ -70,6 +154,7 @@ func connect(ipPort string) {
 	}
 
 	fmt.Println("Connected to peer", ipPort)
+	go handleConnection(conn)
 
 	connMutex.Lock()
 	connections = append(connections, conn)
@@ -90,8 +175,8 @@ func getPublicIP() string {
 
 	return localAddr.IP.String()
 }
+*/
 
- */
 
 
 func getPublicIP() string {
@@ -112,3 +197,5 @@ func getPublicIP() string {
 	}
 	return string(ip)
 }
+
+
