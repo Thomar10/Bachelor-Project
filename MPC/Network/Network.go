@@ -3,12 +3,12 @@ package Network
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
-	"io/ioutil"
 )
 
 //List of connections
@@ -33,7 +33,7 @@ func Send(message string, party int) {
 
 // Listen for incoming connections
 func listen() {
-	ln, err := net.Listen("tcp", ":")
+	ln, err := net.Listen("tcp", ":40404")
 	_, port, _ := net.SplitHostPort(ln.Addr().String())
 
 	ipPort := getPublicIP() + ":" + port
@@ -53,6 +53,8 @@ func listen() {
 			return
 		}
 
+		fmt.Println("Accepted connection from:", conn.RemoteAddr())
+
 		connMutex.Lock()
 		connections = append(connections, conn)
 		connMutex.Unlock()
@@ -67,6 +69,8 @@ func connect(ipPort string) {
 		return
 	}
 
+	fmt.Println("Connected to peer", ipPort)
+
 	connMutex.Lock()
 	connections = append(connections, conn)
 	connMutex.Unlock()
@@ -74,7 +78,7 @@ func connect(ipPort string) {
 
 // Inspired by https://stackoverflow.com/questions/23558425/how-do-i-get-the-local-ip-address-in-go
 /*
-func getOutboundIP() string {
+func getPublicIP() string {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	defer conn.Close()
 
@@ -86,7 +90,9 @@ func getOutboundIP() string {
 
 	return localAddr.IP.String()
 }
-*/
+
+ */
+
 
 func getPublicIP() string {
 	url := "https://api.ipify.org?format=text"	// we are using a public IP API, we're using ipify here, below are some others
