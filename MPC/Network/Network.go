@@ -20,6 +20,8 @@ type Packet struct {
 	Connections []string
 }
 
+//List of IPs
+var peers []string
 //List of connections
 var connections []net.Conn
 var connMutex = &sync.Mutex{}
@@ -31,9 +33,21 @@ func Init() {
 	ipPort, _ := reader.ReadString('\n')
 	ipPort = strings.TrimSpace(ipPort)
 
+	ln, err := net.Listen("tcp", ":40404")
+	_, port, _ := net.SplitHostPort(ln.Addr().String())
+
+	ownIP := getPublicIP() + ":" + port
+	fmt.Println("Listening on following connection: ", ownIP)
+	peers = append(peers, ownIP)
+
+	if err != nil {
+		fmt.Println("Could not listen for incoming connections:", err.Error())
+		return
+	}
+
 	connect(ipPort)
 
-	go listen()
+	go listen(ln)
 }
 
 func Send(message string, party int) {
@@ -41,17 +55,7 @@ func Send(message string, party int) {
 }
 
 // Listen for incoming connections
-func listen() {
-	ln, err := net.Listen("tcp", ":40404")
-	_, port, _ := net.SplitHostPort(ln.Addr().String())
-
-	ipPort := getPublicIP() + ":" + port
-	fmt.Println("Listening on following connection: ", ipPort)
-
-	if err != nil {
-		fmt.Println("Could not listen for incoming connections:", err.Error())
-		return
-	}
+func listen(ln net.Listener) {
 
 	//Accept incoming connections
 	for {
@@ -71,7 +75,7 @@ func listen() {
 		connections = append(connections, conn)
 		connMutex.Unlock()
 
-		fmt.Println("I have the following connections:", connections)
+		//fmt.Println("I have the following connections:", peers)
 	}
 }
 
@@ -95,24 +99,31 @@ func handleConnection(conn net.Conn) {
 }
 
 func getPeers(conns []string) {
-	for _, ip := range conns {
+
+	for i, ip := range conns {
 		if newIP(ip) {
-			connect(ip)
+			peers = append(peers, ip)
+
+			//Do not connect to connected peers own ip - we already have a connection
+			if i != 0 {
+				connect(ip)
+			}
 		}
 	}
+
+	//fmt.Println("Received peers. I now have the following connections:", peers)
 }
 
-//TODO filter properly
 //Check if we already have a connection to this ip or if it is our own ip
 func newIP(ip string) bool {
-	connMutex.Lock()
-	for _, c := range connections {
-		if c.RemoteAddr().String() == ip {
+	for _, peer := range peers {
+		if peer == ip {
 			return false
 		}
 	}
-	connMutex.Unlock()
-	if ip == getPublicIP() {
+
+	//Check if own ip
+	if ip == peers[0] {
 		return false
 	}
 
@@ -121,24 +132,15 @@ func newIP(ip string) bool {
 
 func sendPeers(conn net.Conn) {
 	encoder := gob.NewEncoder(conn)
-	connMutex.Lock()
-
-	var conns []string
-
-	for _, c := range connections {
-		if c == conn {
-			continue
-		}
-		conns = append(conns, c.RemoteAddr().String())
-	}
 
 	packet := Packet{
 		ID: uuid.Must(uuid.NewRandom()).String(),
 		Type: "peerlist",
-		Connections: conns,
+		Connections: peers,
 	}
-	connMutex.Unlock()
 	err := encoder.Encode(packet)
+
+	//fmt.Println("Sent peerlist to peer:", conn.RemoteAddr().String())
 
 	if err != nil {
 		fmt.Println("Failed to gob peer packet:", err.Error())
@@ -154,6 +156,7 @@ func connect(ipPort string) {
 	}
 
 	fmt.Println("Connected to peer", ipPort)
+	sendPeers(conn) //Send ip I'm listening on to connected peer
 	go handleConnection(conn)
 
 	connMutex.Lock()
@@ -177,8 +180,6 @@ func getPublicIP() string {
 }
 */
 
-
-
 func getPublicIP() string {
 	url := "https://api.ipify.org?format=text"	// we are using a public IP API, we're using ipify here, below are some others
 	// https://www.ipify.org
@@ -197,5 +198,6 @@ func getPublicIP() string {
 	}
 	return string(ip)
 }
+
 
 
