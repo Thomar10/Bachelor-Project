@@ -2,12 +2,12 @@ package Network
 
 import (
 	bundle "MPC/Bundle"
+	Prime_bundle "MPC/Bundle/Prime-bundle"
 	"bufio"
 	"encoding/gob"
 	"fmt"
-	"io/ioutil"
+	"log"
 	"net"
-	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -15,10 +15,15 @@ import (
 	"github.com/google/uuid"
 )
 
+type Receiver interface {
+	Receive(bundle bundle.Bundle)
+}
+
 type Packet struct {
 	ID string
 	Type string
 	Connections []string
+	Bundle bundle.Bundle
 }
 
 //List of IPs
@@ -27,14 +32,18 @@ var peers []string
 var connections []net.Conn
 var connMutex = &sync.Mutex{}
 
+var receiver Receiver
+
 func Init() bool {
+
+	gob.Register(Prime_bundle.PrimeBundle{})
 
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Ip and port of a peer on the network >")
 	ipPort, _ := reader.ReadString('\n')
 	ipPort = strings.TrimSpace(ipPort)
 
-	ln, err := net.Listen("tcp", ":40404")
+	ln, err := net.Listen("tcp", ":")
 	_, port, _ := net.SplitHostPort(ln.Addr().String())
 
 	ownIP := getPublicIP() + ":" + port
@@ -52,18 +61,29 @@ func Init() bool {
 	return !connected
 }
 
+func RegisterReceiver(r Receiver) {
+	receiver = r
+}
+
 func GetParties() int {
 	return len(connections)
 }
 
 func Send(bundle bundle.Bundle, party int) {
 	partyToSend := connections[party]
+
+	packet := Packet{
+		ID: uuid.Must(uuid.NewRandom()).String(),
+		Type: "bundle",
+		Bundle: bundle,
+	}
+
 	encoder := gob.NewEncoder(partyToSend)
 
-	err := encoder.Encode(bundle)
+	err := encoder.Encode(packet)
 
 	if err != nil {
-		fmt.Println("Failed to gob peer bundle:", err.Error())
+		fmt.Println("Failed to gob bundle:", err.Error())
 	}
 }
 
@@ -94,10 +114,10 @@ func listen(ln net.Listener) {
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
+	decoder := gob.NewDecoder(conn)
 
 	for {
 		packet := Packet{}
-		decoder := gob.NewDecoder(conn)
 		err := decoder.Decode(&packet)
 
 		if err != nil {
@@ -107,6 +127,15 @@ func handleConnection(conn net.Conn) {
 
 		if packet.Type == "peerlist" {
 			go getPeers(packet.Connections)
+		}
+
+		if packet.Type == "bundle" {
+			if receiver == nil {
+				fmt.Println("No receiver registered")
+				return
+			}
+
+			receiver.Receive(packet.Bundle)
 		}
 	}
 }
@@ -179,7 +208,7 @@ func connect(ipPort string) bool {
 }
 
 // Inspired by https://stackoverflow.com/questions/23558425/how-do-i-get-the-local-ip-address-in-go
-/*
+
 func getPublicIP() string {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	defer conn.Close()
@@ -192,8 +221,8 @@ func getPublicIP() string {
 
 	return localAddr.IP.String()
 }
-*/
 
+/*
 func getPublicIP() string {
 	url := "https://api.ipify.org?format=text"	// we are using a public IP API, we're using ipify here, below are some others
 	// https://www.ipify.org
@@ -212,6 +241,8 @@ func getPublicIP() string {
 	}
 	return string(ip)
 }
+
+ */
 
 
 

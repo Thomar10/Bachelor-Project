@@ -10,10 +10,18 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 )
 
+type Receiver struct {
+
+}
+
+func (r Receiver) Receive(bundle bundle.Bundle) {
+	fmt.Println("I have received bundle:", bundle)
+}
 
 var finite_field finite.Finite
 var bundle_type bundle.Bundle
@@ -29,7 +37,8 @@ func main() {
 	}
 	party_size, _ = strconv.Atoi(os.Args[2])
 
-
+	receiver := Receiver{}
+	network.RegisterReceiver(receiver)
 	isFirst := network.Init()
 	if isFirst {
 		finiteSize := finite_field.GenerateField()
@@ -43,8 +52,11 @@ func main() {
 			fmt.Println(":(")
 		}
 		for {
-			if network.GetParties() == party_size {
-				for i := 0; i <= party_size; i++ {
+			if network.GetParties() == party_size - 1 {
+				//TODO make better implementation where we don't have to sleep
+				//Ie. make network gob decoding more robust
+				time.Sleep(time.Second)
+				for i := 0; i < party_size - 1; i++ {
 					network.Send(bundle_type, i)
 				}
 				break
