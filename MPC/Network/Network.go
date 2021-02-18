@@ -31,6 +31,8 @@ var peers []string
 //List of connections
 var connections []net.Conn
 var connMutex = &sync.Mutex{}
+var encoders = make(map[net.Conn]*gob.Encoder)
+var decoders = make(map[net.Conn]*gob.Decoder)
 
 var receiver Receiver
 
@@ -78,7 +80,8 @@ func Send(bundle bundle.Bundle, party int) {
 		Bundle: bundle,
 	}
 
-	encoder := gob.NewEncoder(partyToSend)
+	encoder := encoders[partyToSend]
+	//encoder := gob.NewEncoder(partyToSend)
 
 	err := encoder.Encode(packet)
 
@@ -115,6 +118,7 @@ func listen(ln net.Listener) {
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 	decoder := gob.NewDecoder(conn)
+	decoders[conn] = decoder //Add decoders to map
 
 	for {
 		packet := Packet{}
@@ -174,7 +178,7 @@ func newIP(ip string) bool {
 
 func sendPeers(conn net.Conn) {
 	encoder := gob.NewEncoder(conn)
-
+	encoders[conn] = encoder //Add encoder to map
 	packet := Packet{
 		ID: uuid.Must(uuid.NewRandom()).String(),
 		Type: "peerlist",
