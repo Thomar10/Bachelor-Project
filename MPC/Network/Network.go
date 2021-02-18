@@ -1,6 +1,7 @@
 package Network
 
 import (
+	bundle "MPC/Bundle"
 	"bufio"
 	"encoding/gob"
 	"fmt"
@@ -26,7 +27,7 @@ var peers []string
 var connections []net.Conn
 var connMutex = &sync.Mutex{}
 
-func Init() {
+func Init() bool {
 
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Ip and port of a peer on the network >")
@@ -42,16 +43,28 @@ func Init() {
 
 	if err != nil {
 		fmt.Println("Could not listen for incoming connections:", err.Error())
-		return
+		panic(err.Error())
 	}
 
-	connect(ipPort)
+	connected := connect(ipPort)
 
 	go listen(ln)
+	return !connected
 }
 
-func Send(message string, party int) {
+func GetParties() int {
+	return len(connections)
+}
 
+func Send(bundle bundle.Bundle, party int) {
+	partyToSend := connections[party]
+	encoder := gob.NewEncoder(partyToSend)
+
+	err := encoder.Encode(bundle)
+
+	if err != nil {
+		fmt.Println("Failed to gob peer bundle:", err.Error())
+	}
 }
 
 // Listen for incoming connections
@@ -147,12 +160,12 @@ func sendPeers(conn net.Conn) {
 	}
 }
 
-func connect(ipPort string) {
+func connect(ipPort string) bool {
 	conn, err := net.Dial("tcp", ipPort)
 
 	if err != nil {
 		fmt.Println("Failed to connect to peer:", err.Error())
-		return
+		return false
 	}
 
 	fmt.Println("Connected to peer", ipPort)
@@ -162,6 +175,7 @@ func connect(ipPort string) {
 	connMutex.Lock()
 	connections = append(connections, conn)
 	connMutex.Unlock()
+	return true
 }
 
 // Inspired by https://stackoverflow.com/questions/23558425/how-do-i-get-the-local-ip-address-in-go
