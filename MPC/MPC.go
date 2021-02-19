@@ -116,15 +116,19 @@ func createFieldAndShares(field_size int) {
 
 func distributeShares() {
 	for party := 1; party < party_size; party++ {
+		shareCopy := make([]int, len(shares))
+		copy(shareCopy, shares)
+		share_slice := shareCopy[:party]
+		share_slice2 := shareCopy[party + 1:]
 		 share_bundle := Prime_bundle.PrimeBundle{
 			ID: uuid.Must(uuid.NewRandom()).String(),
 			Type: "Share",
-			Shares: append(shares[:party], shares[party + 1:]...),
+			Shares: append(share_slice, share_slice2...),
+			//append(shares[:party], shares[party + 1:]...),
 		}
 
 		network.Send(share_bundle, party - 1)
 	}
-	fmt.Println(shares[1:])
 	receivedShares = append(receivedShares, shares[1:]...)
 }
 
