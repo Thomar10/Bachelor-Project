@@ -2,6 +2,8 @@ package Prime_bundle
 
 type PrimeBundle struct {
 	ID string
+	Type string
 	Prime int
-	Share int
+	Shares []int
+	Result int
 }

@@ -1,14 +1,24 @@
 package Simple_Sharing
 
 import (
-	"fmt"
+	finite "MPC/Finite-fields"
 	"math/rand"
-	crand "crypto/rand"
 )
-var prime int
 
-func ComputeShares(parties, secret int) []int {
-	var shares []int
+var field finite.Finite
+
+type Simple_Sharing struct {
+
+}
+
+func (s Simple_Sharing) SetField(f finite.Finite) {
+	field = f
+}
+
+
+func (s Simple_Sharing) ComputeShares(parties, secret int) []int {
+	return field.ComputeShares(parties, secret)
+/*	var shares []int
 	//Create the n - 1 random shares
 	for s := 1; s < parties; s++ {
 		shares = append(shares, randomNumberInZ(prime - 1))
@@ -17,25 +27,28 @@ func ComputeShares(parties, secret int) []int {
 	for share := range shares {
 		secret -= share
 	}
+
 	shares = append(shares, secret % prime)
 
-	return shares
+	return shares*/
 }
 
 func randomNumberInZ(prime int) int {
 	return rand.Intn(prime)
 }
 
-func SetPrime(p int) {
-	prime = p
-}
-
-func GeneratePrime() int {
-	bigPrime, err := crand.Prime(crand.Reader, 32) //32 to avoid errors when converting to int
-	if err != nil {
-		fmt.Println("Unable to compute prime", err.Error())
-		return 0
+func (s Simple_Sharing) ComputeFunction(shares []int) int {
+	result := 0
+	for _, share := range shares {
+		result += share
 	}
-	return int(bigPrime.Int64())
+	return result % field.GetSize()
 }
 
+func (s Simple_Sharing) ComputeResult(results []int) int {
+	result := 0
+	for _, r := range results {
+		result += r
+	}
+	return result % field.GetSize()
+}

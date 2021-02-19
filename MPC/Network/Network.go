@@ -6,8 +6,10 @@ import (
 	"bufio"
 	"encoding/gob"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -36,6 +38,9 @@ var decoders = make(map[net.Conn]*gob.Decoder)
 
 var receiver Receiver
 
+var debug = true
+
+
 func Init() bool {
 
 	gob.Register(Prime_bundle.PrimeBundle{})
@@ -45,10 +50,19 @@ func Init() bool {
 	ipPort, _ := reader.ReadString('\n')
 	ipPort = strings.TrimSpace(ipPort)
 
-	ln, err := net.Listen("tcp", ":")
+
+	ln, err := net.Listen("tcp", ":40404")
+	if debug {
+		ln, err = net.Listen("tcp", ":")
+	}
 	_, port, _ := net.SplitHostPort(ln.Addr().String())
 
 	ownIP := getPublicIP() + ":" + port
+
+	if debug {
+		ownIP = getLocalIP() + ":" + port
+	}
+
 	fmt.Println("Listening on following connection: ", ownIP)
 	peers = append(peers, ownIP)
 
@@ -68,10 +82,12 @@ func RegisterReceiver(r Receiver) {
 }
 
 func GetParties() int {
+
 	return len(connections)
 }
 
 func Send(bundle bundle.Bundle, party int) {
+	//TODO make party int consistent (-1?)
 	partyToSend := connections[party]
 
 	packet := Packet{
@@ -213,7 +229,7 @@ func connect(ipPort string) bool {
 
 // Inspired by https://stackoverflow.com/questions/23558425/how-do-i-get-the-local-ip-address-in-go
 
-func getPublicIP() string {
+func getLocalIP() string {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	defer conn.Close()
 
@@ -226,7 +242,7 @@ func getPublicIP() string {
 	return localAddr.IP.String()
 }
 
-/*
+
 func getPublicIP() string {
 	url := "https://api.ipify.org?format=text"	// we are using a public IP API, we're using ipify here, below are some others
 	// https://www.ipify.org
@@ -246,7 +262,7 @@ func getPublicIP() string {
 	return string(ip)
 }
 
- */
+
 
 
 
