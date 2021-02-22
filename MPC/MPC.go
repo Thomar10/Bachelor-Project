@@ -101,7 +101,8 @@ func main() {
 	}
 	for {
 		if party_size == len(receivedResults) {
-			fmt.Println("Got the following result: ", secret_sharing.ComputeResult(receivedResults))
+			result := secret_sharing.ComputeResult(receivedResults) / (party_size - 1)
+			fmt.Println("Got the following result: ", result)
 			break
 		}
 	}
