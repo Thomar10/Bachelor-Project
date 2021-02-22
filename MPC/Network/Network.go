@@ -36,12 +36,19 @@ var connMutex = &sync.Mutex{}
 var encoders = make(map[net.Conn]*gob.Encoder)
 var decoders = make(map[net.Conn]*gob.Decoder)
 
+var finalNetworkSize int
+var readyParties = make(map[net.Conn]bool)
+var readySent = false
+var readyMutex = &sync.Mutex{}
+
 var receiver Receiver
 
 var debug = true
 
 
-func Init() bool {
+func Init(networkSize int) bool {
+
+	finalNetworkSize = networkSize
 
 	gob.Register(Prime_bundle.PrimeBundle{})
 
@@ -86,6 +93,35 @@ func GetParties() int {
 	return len(connections)
 }
 
+func IsReady() bool {
+	return len(readyParties) + 1 == finalNetworkSize
+}
+
+func sendReady() {
+	readyMutex.Lock()
+	defer readyMutex.Unlock()
+	if readySent {
+		return
+	}
+
+	packet := Packet{
+		ID: uuid.Must(uuid.NewRandom()).String(),
+		Type: "ready",
+	}
+
+	for _, conn := range connections {
+		encoder := encoders[conn]
+		err := encoder.Encode(packet)
+
+		if err != nil {
+			fmt.Println("Failed to send ready", err.Error())
+		}
+	}
+
+	fmt.Println("I am ready!")
+	readySent = true
+}
+
 func Send(bundle bundle.Bundle, party int) {
 	//TODO make party int consistent (-1?)
 	partyToSend := connections[party]
@@ -127,6 +163,10 @@ func listen(ln net.Listener) {
 		connections = append(connections, conn)
 		connMutex.Unlock()
 
+		if len(connections) + 1 == finalNetworkSize {
+			sendReady()
+		}
+
 		//fmt.Println("I have the following connections:", peers)
 	}
 }
@@ -157,6 +197,10 @@ func handleConnection(conn net.Conn) {
 
 			receiver.Receive(packet.Bundle)
 		}
+
+		if packet.Type == "ready" {
+			readyParties[conn] = true
+		}
 	}
 }
 
@@ -171,6 +215,10 @@ func getPeers(conns []string) {
 				connect(ip)
 			}
 		}
+	}
+
+	if len(connections) + 1 == finalNetworkSize {
+		sendReady()
 	}
 
 	//fmt.Println("Received peers. I now have the following connections:", peers)

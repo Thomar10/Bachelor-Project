@@ -65,7 +65,7 @@ func main() {
 
 	receiver := Receiver{}
 	network.RegisterReceiver(receiver)
-	isFirst := network.Init()
+	isFirst := network.Init(party_size)
 	if isFirst {
 		finiteSize := finite_field.GenerateField()
 		switch bundle_type.(type) {
@@ -79,7 +79,7 @@ func main() {
 			fmt.Println(":(")
 		}
 		for {
-			if network.GetParties() == party_size - 1 {
+			if network.IsReady() {
 				for i := 0; i < party_size - 1; i++ {
 					network.Send(bundle_type, i)
 				}
