@@ -6,4 +6,5 @@ type PrimeBundle struct {
 	Prime int
 	Shares []int
 	Result int
+	From int
 }
