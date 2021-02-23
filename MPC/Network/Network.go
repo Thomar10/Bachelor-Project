@@ -35,16 +35,31 @@ var connections []net.Conn
 var connMutex = &sync.Mutex{}
 var encoders = make(map[net.Conn]*gob.Encoder)
 var decoders = make(map[net.Conn]*gob.Decoder)
-
+var parties = make(map[string]net.Conn)
 var finalNetworkSize int
 var readyParties = make(map[net.Conn]bool)
 var readySent = false
 var readyMutex = &sync.Mutex{}
-
+var isHost bool
 var receiver Receiver
+var myIP string
 
 var debug = true
 
+
+func GetPartyNumber() int {
+	for i, p := range peers {
+		if p == myIP {
+			return i + 1
+		}
+	}
+	panic("Could not find miself :(")
+}
+
+//TODO slet når testing er ovre
+func Peers() []string {
+	return peers
+}
 
 func Init(networkSize int) bool {
 
@@ -64,24 +79,25 @@ func Init(networkSize int) bool {
 	}
 	_, port, _ := net.SplitHostPort(ln.Addr().String())
 
-	ownIP := getPublicIP() + ":" + port
+	myIP = getPublicIP() + ":" + port
 
 	if debug {
-		ownIP = getLocalIP() + ":" + port
+		myIP = getLocalIP() + ":" + port
 	}
 
-	fmt.Println("Listening on following connection: ", ownIP)
-	peers = append(peers, ownIP)
+	fmt.Println("Listening on following connection: ", myIP)
+	peers = append(peers, myIP)
 
 	if err != nil {
 		fmt.Println("Could not listen for incoming connections:", err.Error())
 		panic(err.Error())
 	}
 
-	connected := connect(ipPort)
+	//Connect returnere false hvis man failer et connect - hermed er du den første
+	isHost = !connect(ipPort)
 
 	go listen(ln)
-	return !connected
+	return isHost
 }
 
 func RegisterReceiver(r Receiver) {
@@ -89,7 +105,6 @@ func RegisterReceiver(r Receiver) {
 }
 
 func GetParties() int {
-
 	return len(connections)
 }
 
@@ -109,6 +124,12 @@ func sendReady() {
 		Type: "ready",
 	}
 
+	if isHost {
+		packet.Connections = peers
+	}
+
+	fmt.Println(packet)
+
 	for _, conn := range connections {
 		encoder := encoders[conn]
 		err := encoder.Encode(packet)
@@ -124,8 +145,12 @@ func sendReady() {
 
 func Send(bundle bundle.Bundle, party int) {
 	//TODO make party int consistent (-1?)
-	partyToSend := connections[party]
+	peer := peers[party - 1 ]
+	partyToSend, found := parties[peer]//connections[party]
 
+	if !found {
+		fmt.Println("Party could not be found in parties :(")
+	}
 	packet := Packet{
 		ID: uuid.Must(uuid.NewRandom()).String(),
 		Type: "bundle",
@@ -163,7 +188,7 @@ func listen(ln net.Listener) {
 		connections = append(connections, conn)
 		connMutex.Unlock()
 
-		if len(connections) + 1 == finalNetworkSize {
+		if len(peers) == finalNetworkSize {
 			sendReady()
 		}
 
@@ -186,7 +211,7 @@ func handleConnection(conn net.Conn) {
 		}
 
 		if packet.Type == "peerlist" {
-			go getPeers(packet.Connections)
+			go getPeers(packet.Connections, conn)
 		}
 
 		if packet.Type == "bundle" {
@@ -199,13 +224,17 @@ func handleConnection(conn net.Conn) {
 		}
 
 		if packet.Type == "ready" {
+			if len(packet.Connections) > 0 {
+				peers = packet.Connections
+			}
 			readyParties[conn] = true
 		}
 	}
 }
 
-func getPeers(conns []string) {
-
+func getPeers(conns []string, sender net.Conn) {
+	senderIP := conns[0]
+	parties[senderIP] = sender
 	for i, ip := range conns {
 		if newIP(ip) {
 			peers = append(peers, ip)
@@ -272,6 +301,10 @@ func connect(ipPort string) bool {
 	connMutex.Lock()
 	connections = append(connections, conn)
 	connMutex.Unlock()
+
+	//TODO Mutex?
+	parties[ipPort] = conn
+
 	return true
 }
 

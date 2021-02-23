@@ -37,12 +37,17 @@ func randomNumberInZ(prime int) int {
 	return rand.Intn(prime)
 }
 
-func (s Simple_Sharing) ComputeFunction(shares []int) int {
-	result := 0
-	for _, share := range shares {
-		result += share
+func (s Simple_Sharing) ComputeFunction(shares map[int][]int) []int {
+	resultSize := len(shares[1])
+	result := make([]int, resultSize)
+	for i := 0; i < resultSize; i++ {
+		for _, share := range shares {
+			//TODO Skift add om til field.Add - samt ændre hardcoding generelt
+			result[i] += share[i]
+		}
+		result[i] = result[i] % field.GetSize()
 	}
-	return result % field.GetSize()
+	return result
 }
 
 func (s Simple_Sharing) ComputeResult(results []int) int {
