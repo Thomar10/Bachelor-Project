@@ -2,6 +2,7 @@ package main
 
 import (
 	bundle "MPC/Bundle"
+	"MPC/Bundle/Modules"
 	primebundle "MPC/Bundle/Prime-bundle"
 	finite "MPC/Finite-fields"
 	"MPC/Finite-fields/Binary"
@@ -25,16 +26,8 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 		case primebundle.PrimeBundle:
 			if match.Type == "Prime" {
 				myPartyNumber = network.GetPartyNumber()
-				createFieldAndShares(match.Prime)
-				distributeShares()
-			} else if match.Type == "Share" {
-				receivedShares[match.From] = match.Shares
-				//receivedShares = append(receivedShares, match.Shares...)
-				//fmt.Println(receivedShares)
-			} else if match.Type == "Result" {
-				if len(receivedResults) != partySize {
-					receivedResults = append(receivedResults, match.Result)
-				}
+				createField(match.Prime)
+				sizeSet = true
 			} else {
 				panic("Given type is unknown")
 			}
@@ -46,9 +39,7 @@ var bundleType bundle.Bundle
 var secretSharing secretsharing.Secret_Sharing
 var partySize int
 var secret int
-var shares []int
-var receivedShares =  make(map[int][]int)
-var receivedResults []int
+var sizeSet bool
 var myPartyNumber int
 
 func main() {
@@ -94,73 +85,21 @@ func main() {
 				break
 			}
 		}
-		createFieldAndShares(finiteSize)
-		distributeShares()
+		createField(finiteSize)
+		sizeSet = true
 	}
 
-	for{
-		if partySize == len(receivedShares) {
-			//Udregn function
-			//TODO fjern hardcoding
-			funcResult := secretSharing.ComputeFunction(receivedShares)
-			distributeResult(funcResult)
-			break
-		}
-	}
 	for {
-		if partySize == len(receivedResults) {
-			result := secretSharing.ComputeResult(receivedResults)// / (partySize - 1)
-			fmt.Println("Got the following result: ", result)
-			fmt.Println("My peer list looks as following: ", network.Peers())
+		if sizeSet {
 			break
 		}
 	}
+
+	result := Modules.Add(secret, secretSharing, partySize)
+	fmt.Println("Done adding, got result:", result)
 }
 
-func createFieldAndShares(fieldSize int) {
+func createField(fieldSize int) {
 	finiteField.SetSize(fieldSize)
 	secretSharing.SetField(finiteField)
-	shares = secretSharing.ComputeShares(partySize, secret)
-	fmt.Println("My shares are:", shares)
-}
-
-func distributeShares() {
-	for party := 1; party <= partySize; party++ {
-		shareCopy := make([]int, len(shares))
-		copy(shareCopy, shares)
-		shareSlice := shareCopy[:party - 1]
-		shareSlice2 := shareCopy[party:]
-		shareSlice = append(shareSlice, shareSlice2...)
-		 shareBundle := primebundle.PrimeBundle{
-			ID:     uuid.Must(uuid.NewRandom()).String(),
-			Type:   "Share",
-			Shares: shareSlice,
-			From: myPartyNumber,
-		}
-		fmt.Println("Sending shares: ", shareSlice, "To party", party)
-		if myPartyNumber == party {
-			receivedShares[myPartyNumber] = shareSlice
-			//receivedShares = append(receivedShares, shareSlice...)
-		}else {
-			network.Send(shareBundle, party)
-		}
-
-	}
-}
-
-func distributeResult(result []int) {
-	counter := 0
-	for party := 1; party <= partySize; party++ {
-		if myPartyNumber != party {
-			shareBundle := primebundle.PrimeBundle{
-				ID: uuid.Must(uuid.NewRandom()).String(),
-				Type: "Result",
-				Result: result[counter],
-			}
-			counter++
-			network.Send(shareBundle, party)
-		} else {
-			receivedResults = append(receivedResults, result...)
-		}
-	}
 }
