@@ -1,4 +1,4 @@
-package Modules
+package Add
 
 import (
 	bundle "MPC/Bundle"
@@ -46,6 +46,8 @@ func Add(secret int, sSharing secretsharing.Secret_Sharing, pSize int) int {
 
 	network.RegisterReceiver(receiver)
 
+	secretSharing.SetFunction("add")
+
 	shares = secretSharing.ComputeShares(partySize, secret)
 	fmt.Println("My shares are:", shares)
 
@@ -55,7 +57,7 @@ func Add(secret int, sSharing secretsharing.Secret_Sharing, pSize int) int {
 		if partySize == len(receivedShares) {
 			//Udregn function
 			//TODO fjern hardcoding
-			funcResult := secretSharing.ComputeFunction(receivedShares)
+			funcResult := secretSharing.ComputeFunction(receivedShares, network.GetPartyNumber())
 			distributeResult(funcResult)
 			break
 		}
@@ -63,7 +65,7 @@ func Add(secret int, sSharing secretsharing.Secret_Sharing, pSize int) int {
 
 	for {
 		if partySize == len(receivedResults) {
-			result := secretSharing.ComputeResult(receivedResults)// / (partySize - 1)
+			result := secretSharing.ComputeResult(receivedResults) // / (partySize - 1)
 			fmt.Println("Got the following result: ", result)
 			fmt.Println("My peer list looks as follows: ", network.Peers())
 			return result

@@ -2,7 +2,8 @@ package main
 
 import (
 	bundle "MPC/Bundle"
-	"MPC/Bundle/Modules"
+	"MPC/Bundle/Modules/Add"
+	"MPC/Bundle/Modules/Multiplication"
 	primebundle "MPC/Bundle/Prime-bundle"
 	finite "MPC/Finite-fields"
 	"MPC/Finite-fields/Binary"
@@ -95,8 +96,9 @@ func main() {
 		}
 	}
 
-	result := Modules.Add(secret, secretSharing, partySize)
-	fmt.Println("Done adding, got result:", result)
+	multiplyResult := Multiplication.Multiply(secret, secretSharing, partySize)
+	addResult := Add.Add(multiplyResult, secretSharing, partySize)
+	fmt.Println("Done adding, got result:", addResult)
 }
 
 func createField(fieldSize int) {

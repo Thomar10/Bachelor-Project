@@ -6,6 +6,7 @@ import (
 )
 
 var field finite.Finite
+var function string
 
 type Simple_Sharing struct {
 
@@ -37,15 +38,32 @@ func randomNumberInZ(prime int) int {
 	return rand.Intn(prime)
 }
 
-func (s Simple_Sharing) ComputeFunction(shares map[int][]int) []int {
+func (s Simple_Sharing) SetFunction(f string) {
+	function = f
+}
+
+func (s Simple_Sharing) ComputeFunction(shares map[int][]int, party int) []int {
 	resultSize := len(shares[1])
 	result := make([]int, resultSize)
-	for i := 0; i < resultSize; i++ {
-		for _, share := range shares {
-			//TODO Skift add om til field.Add - samt ændre hardcoding generelt
-			result[i] += share[i]
+	if function == "add" {
+		for i := 0; i < resultSize; i++ {
+			for _, share := range shares {
+				//TODO Skift add om til field.Add - samt ændre hardcoding generelt
+				result[i] += share[i]
+			}
+			result[i] = result[i] % field.GetSize()
 		}
-		result[i] = result[i] % field.GetSize()
+	} else if function == "multiply" {
+		//TODO remove hardcoding
+		if party == 1 {
+			result[0] = shares[1][0] * shares[2][0] + shares[1][0] * shares[2][1] + shares[1][1] * shares[2][0]
+		} else if party == 2 {
+			result[0] = shares[1][1] * shares[2][1] + shares[1][0] * shares[2][1] + shares[1][1] * shares[2][0]
+		} else if party == 3 {
+			result[0] = shares[1][0] * shares[2][0] + shares[1][0] * shares[2][1] + shares[1][1] * shares[2][0]
+		}
+
+		result[0] = result[0] % field.GetSize()
 	}
 	return result
 }
