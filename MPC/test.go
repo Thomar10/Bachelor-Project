@@ -1,10 +1,9 @@
 package main
 
-import "fmt"
 /*
 Test fil til at teste go kode uden at kører hele programmet xd
  */
-func main() {
+/*func main() {
 	a := []int{1, 2, 3}
 
 	fmt.Println("Party 1 shares")
@@ -19,3 +18,4 @@ func main() {
 	fmt.Println(a[:2])
 	fmt.Println(a[3:])
 }
+*/
