@@ -21,20 +21,25 @@ func (s Simple_Sharing) SetField(f finite.Finite) {
 
 
 func (s Simple_Sharing) ComputeShares(parties, secret int) []int {
-	return field.ComputeShares(parties, secret)
-/*	var shares []int
+	var prime = field.GetSize()
+	var shares []int
+	lastShare := secret
 	//Create the n - 1 random shares
 	for s := 1; s < parties; s++ {
-		shares = append(shares, randomNumberInZ(prime - 1))
+		shares = append(shares, randomNumberInZ(prime))
 	}
 	//Create the nth share
-	for share := range shares {
-		secret -= share
+	for _, share := range shares {
+		lastShare -= share
 	}
+	//Remove negative number
+	if lastShare < 0 {
+		//fmt.Println("prime + lastShare: ", prime + lastShare)
+		lastShare = prime + lastShare % prime
+	}
+	shares = append(shares, lastShare % prime)
 
-	shares = append(shares, secret % prime)
-
-	return shares*/
+	return shares
 }
 
 func randomNumberInZ(prime int) int {
