@@ -5,14 +5,17 @@ import (
 	"MPC/Bundle/Modules/Add"
 	"MPC/Bundle/Modules/Multiplication"
 	primebundle "MPC/Bundle/Prime-bundle"
+	"MPC/Circuit"
 	finite "MPC/Finite-fields"
 	"MPC/Finite-fields/Binary"
 	"MPC/Finite-fields/Prime"
 	network "MPC/Network"
 	secretsharing "MPC/Secret-Sharing"
 	simplesharing "MPC/Secret-Sharing/Simple-Sharing"
+	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
+	"io/ioutil"
 	"os"
 	"strconv"
 )
@@ -42,12 +45,14 @@ var partySize int
 var secret int
 var sizeSet bool
 var myPartyNumber int
+var circuit Circuit.Circuit
 
 func main() {
 	if os.Args[1] == "-p" {
 		finiteField = Prime.Prime{}
 		finiteField.InitSeed()
 		bundleType = primebundle.PrimeBundle{}
+		loadCircuit()
 	}else {
 		finiteField = Binary.Binary{}
 		//TODO Add binary bundle
@@ -95,13 +100,55 @@ func main() {
 			break
 		}
 	}
+	//Udregn circuit
+	for _, gate := range circuit.Gates {
+		if myPartyNumber == gate.Input_one || myPartyNumber == gate.Input_two {
+			if gate.Operation == "Multiplication" {
+				multiplyResult := Multiplication.Multiply(secret, secretSharing, partySize)
+				addResult := Add.Add(multiplyResult, secretSharing, partySize)
+			} else if gate.Operation == "Addition" {
+				addResult := Add.Add(secret, secretSharing, partySize)
+			}
+		} else {
+			if partySize < gate.Input_one || myPartyNumber < gate.Input_two {
+				if gate.Operation == "Multiplication" {
+					multiplyResult := Multiplication.Multiply(gate.IntermediateRes, secretSharing, partySize)
+					addResult := Add.Add(multiplyResult, secretSharing, partySize)
+					gate.IntermediateRes = addResult
+				} else if gate.Operation == "Addition" {
+					addResult := Add.Add(gate.IntermediateRes, secretSharing, partySize)
+				}
+			}
+			if gate.Operation == "Multiplication" {
+				multiplyResult := Multiplication.Multiply(-1, secretSharing, partySize)
+				addResult := Add.Add(multiplyResult, secretSharing, partySize)
+			} else if gate.Operation == "Addition" {
+				addResult := Add.Add(secret, secretSharing, partySize)
+			}
+		}
+	}
 
-	multiplyResult := Multiplication.Multiply(secret, secretSharing, partySize)
-	addResult := Add.Add(multiplyResult, secretSharing, partySize)
-	fmt.Println("Done adding, got result:", addResult)
+	//multiplyResult := Multiplication.Multiply(secret, secretSharing, partySize)
+	//addResult := Add.Add(multiplyResult, secretSharing, partySize)
+	//fmt.Println("Done adding, got result:", addResult)
 }
 
 func createField(fieldSize int) {
 	finiteField.SetSize(fieldSize)
 	secretSharing.SetField(finiteField)
+}
+
+func loadCircuit() {
+	jsonFile, err := os.Open("Circuit.json")
+	// if we os.Open returns an error then handle it
+	if err != nil {
+		fmt.Println(err)
+	}
+	// fmt.Println("Successfully Opened users.json")
+	// defer the closing of our jsonFile so that we can parse it later on
+	defer jsonFile.Close()
+	//var circuit Circuit.Circuit
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+	json.Unmarshal(byteValue, &circuit)
+
 }
