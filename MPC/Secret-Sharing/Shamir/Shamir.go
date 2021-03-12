@@ -10,6 +10,14 @@ type Shamir struct {
 
 }
 
+func (s Shamir) SetFunction(f string) {
+	panic("implement me")
+}
+
+func (s Shamir) ComputeResult(ints []int) int {
+	panic("implement me")
+}
+
 var field finite.Finite
 
 func (s Shamir) SetField(f finite.Finite) {
@@ -49,6 +57,6 @@ func calculatePolynomial(polynomial []int, x int) int {
 }
 
 func (s Shamir) ComputeFunction(shares map[int][]int, party int) []int {
-
+	Reconstruct(shares)
 	return nil
 }
