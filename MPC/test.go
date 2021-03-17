@@ -1,34 +1,38 @@
 package main
 
 import (
-	"MPC/Finite-fields/Prime"
-	"MPC/Secret-Sharing/Shamir"
 	"math"
 )
 
 /*
 Test fil til at teste go kode uden at køre hele programmet xd
- */
-func main() {
-	secretSharing := Shamir.Shamir{}
-	finiteField := Prime.Prime{}
-	finiteField.SetSize(11)
-	secretSharing.SetField(finiteField)
+*/
+//func main() {
+//
+//	fmt.Println(calcT(3))
+//
+//
+//	//secretSharing := Shamir.Shamir{}
+//	//finiteField := Prime.Prime{}
+//	//finiteField.SetSize(11)
+//	//secretSharing.SetField(finiteField)
+//	//
+//	//
+//	//shares := make(map[int][]int)
+//	//shares[3] = []int{6}
+//	//shares[4] = []int{6}
+//	//shares[5] = []int{8}
+//	//secretSharing.ComputeFunction(shares, 1)
+//
+//	//fmt.Println(permutationsInts)
+//	//fmt.Println(math.Pow(2,3))
+//	//fmt.Println(findInverse(-2, 11))
+//
+//}
 
-
-	shares := make(map[int][]int)
-	shares[3] = []int{6}
-	shares[4] = []int{6}
-	shares[5] = []int{8}
-	secretSharing.ComputeFunction(shares, 1)
-
-	//fmt.Println(permutationsInts)
-	//fmt.Println(math.Pow(2,3))
-	//fmt.Println(findInverse(-2, 11))
-
+func calcT(parties int) int {
+	return (parties - 1) / 2
 }
-
-
 
 func findInverse(a int, prime int) int {
 	if a < 0 {

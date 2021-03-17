@@ -1,13 +1,12 @@
 package Circuit
 
 type Circuit struct {
-	Gates []Gate `json:"Circuit"`
+	Gates []Gate `json:"Gate"`
 }
 
 type Gate struct {
-	GateNumber int
-	Input_one int
-	Input_two int
-	Operation string
-	IntermediateRes int
+	GateNumber int `json:"GateNumber"`
+	Input_one int `json:"Input_one"`
+	Input_two int `json:"Input_two"`
+	Operation string `json:"Operation"`
 }

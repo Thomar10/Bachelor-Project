@@ -6,18 +6,18 @@ import (
 	"sort"
 )
 
-func Reconstruct(shares map[int][]int) int {
+func Reconstruct(shares map[int]int) int {
 	keys := reflect.ValueOf(shares).MapKeys()
 	var keysArray []int
 	for _, k := range keys {
 		keysArray = append(keysArray, (k.Interface()).(int))
 	}
 	sort.Ints(keysArray)
-	deltas := make([][]int, len(keysArray))
+	//deltas := make([][]int, len(keysArray))
 	secret := 0
-	for i, key := range keysArray {
-		secret += shares[key][0] * computeDelta(key, keysArray)[0]
-		deltas[i] = computeDelta(key, keysArray)
+	for _, key := range keysArray {
+		secret += shares[key] * computeDelta(key, keysArray)[0]
+		//deltas[i] = computeDelta(key, keysArray)
 	}
 
 	return secret % field.GetSize()
