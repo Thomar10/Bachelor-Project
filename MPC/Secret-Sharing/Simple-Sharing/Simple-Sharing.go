@@ -1,7 +1,11 @@
 package Simple_Sharing
 
 import (
+	"MPC/Bundle/Modules/Add"
+	"MPC/Bundle/Modules/Multiplication"
+	"MPC/Circuit"
 	finite "MPC/Finite-fields"
+	network "MPC/Network"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -49,11 +53,38 @@ func (s Simple_Sharing) SetFunction(f string) {
 	function = f
 }
 
+func (s Simple_Sharing) TheOneRing(circuit Circuit.Circuit, secret int) int {
+	result := 0
+
+	partyNumber := network.GetPartyNumber()
+	partySize := network.GetParties()
+
+	for _, gate := range circuit.Gates {
+		switch gate.Operation {
+			case "Addition":
+				function = "Addition"
+				result = Add.Add(secret, s, partySize)
+			case "Multiplication":
+				if partyNumber != gate.Input_one && partyNumber != gate.Input_two {
+					//This party should not participate
+					secret = -1
+				}
+				function = "Multiplication"
+				multiplyResult := Multiplication.Multiply(secret, s, partySize)
+				function = "Addition"
+				result = Add.Add(multiplyResult, s, partySize)
+			default:
+				panic("Unknown operation")
+		}
+	}
+
+	return result
+}
 
 func (s Simple_Sharing) ComputeFunction(shares map[int][]int, party int) []int {
 	resultSize := len(shares[1])
 	result := make([]int, resultSize)
-	if function == "add" {
+	if function == "Addition" {
 		for i := 0; i < resultSize; i++ {
 			for _, share := range shares {
 				//TODO Skift add om til field.Add - samt ændre hardcoding generelt
@@ -61,7 +92,7 @@ func (s Simple_Sharing) ComputeFunction(shares map[int][]int, party int) []int {
 			}
 			result[i] = result[i] % field.GetSize()
 		}
-	} else if function == "multiply" {
+	} else if function == "Multiplication" {
 		keys := reflect.ValueOf(shares).MapKeys()
 		var keysArray []int
 		for _, k := range keys {

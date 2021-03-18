@@ -105,7 +105,7 @@ func RegisterReceiver(r Receiver) {
 }
 
 func GetParties() int {
-	return len(connections)
+	return len(connections) + 1
 }
 
 func IsReady() bool {

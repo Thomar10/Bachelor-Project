@@ -1,15 +1,14 @@
 package main
 
 import (
-	"MPC/Finite-fields/Prime"
-	"MPC/Secret-Sharing/Shamir"
-	"fmt"
 	"math"
 )
 
 /*
 Test fil til at teste go kode uden at køre hele programmet xd
 */
+
+/*
 func main() {
 
 	fmt.Println(calcT(3))
@@ -40,6 +39,7 @@ func main() {
 	//fmt.Println(findInverse(-2, 11))
 
 }
+*/
 
 func calcT(parties int) int {
 	return (parties - 1) / 2

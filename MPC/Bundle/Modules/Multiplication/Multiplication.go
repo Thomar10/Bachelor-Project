@@ -46,7 +46,6 @@ func Multiply(secret int, sSharing secretsharing.Secret_Sharing, pSize int) int 
 
 	network.RegisterReceiver(receiver)
 
-	secretSharing.SetFunction("multiply")
 
 	if secret != -1 {
 		shares = secretSharing.ComputeShares(partySize, secret)

@@ -1,0 +1,10 @@
+{
+  "Gate": [
+    {
+      "GateNumber": 4,
+      "Input_one": 1,
+      "Input_two": 2,
+      "Operation": "Multiplication"
+    }
+  ]
+}

@@ -1,16 +1,47 @@
 package Shamir
 
 import (
+	bundle "MPC/Bundle"
+	primebundle "MPC/Bundle/Prime-bundle"
+	"MPC/Circuit"
 	finite "MPC/Finite-fields"
+	network "MPC/Network"
+	"fmt"
+	"github.com/google/uuid"
 	"math"
 	"math/rand"
+	"sync"
 	"time"
 )
 
 type Shamir struct {
 
 }
+
+type Receiver struct {
+
+}
+
+func (r Receiver) Receive(bundle bundle.Bundle) {
+	fmt.Println("I have received bundle:", bundle)
+	switch match := bundle.(type) {
+	case primebundle.PrimeBundle:
+		if match.Type == "Share"{
+			wiresMutex.Lock()
+			wires[match.From] = match.Shares[0]
+			wiresMutex.Unlock()
+		} else if match.Type == "Result" {
+			receivedResults[match.From] = match.Result
+		} else {
+			panic("Given type is unknown")
+		}
+	}
+}
+
 var function string
+var wires = make(map[int]int)
+var wiresMutex = &sync.Mutex{}
+var receivedResults = make(map[int]int)
 
 func (s Shamir) SetFunction(f string) {
 	function = f
@@ -37,7 +68,7 @@ func (s Shamir) ComputeShares(parties, secret int) []int {
 }
 
 
-func ComputeResult(shares map[int]int, parties int) int {
+func computeResultt(shares map[int]int, parties int) int {
 	return Reconstruct(shares)
 
 }
@@ -54,6 +85,54 @@ func (s Shamir) SetField(f finite.Finite) {
 	field = f
 }
 
+func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret int) int {
+	partySize := network.GetParties()
+
+	receiver := Receiver{}
+
+	network.RegisterReceiver(receiver)
+
+	result := 0
+
+	shares := s.ComputeShares(partySize, secret)
+	distributeShares(shares, partySize)
+
+	for {
+		for i, gate := range circuit.Gates {
+			wiresMutex.Lock()
+			input1, found1 := wires[gate.Input_one]
+			input2, found2 := wires[gate.Input_two]
+			wiresMutex.Unlock()
+			if found1 && found2 {
+				fmt.Println("Gate ready")
+				fmt.Println(gate)
+				//do operation
+				var output int
+				switch gate.Operation {
+				case "Addition":
+					output = (input1 + input2) % field.GetSize()
+				case "Multiplication":
+					output = 3
+				}
+				wiresMutex.Lock()
+				wires[gate.GateNumber] = output
+				wiresMutex.Unlock()
+				circuit.Gates = removeGate(circuit, gate, i)
+				if len(circuit.Gates) == 0 {
+					distributeResult([]int{output}, partySize)
+				}
+				break
+				//Remove gate from circuits.gates
+			}
+		}
+		if len(receivedResults) == partySize {
+			result = Reconstruct(receivedResults)
+			break
+		}
+	}
+
+	return result
+}
 
 func calculatePolynomial(polynomial []int, x int) int {
 	var result = 0
@@ -71,4 +150,52 @@ func (s Shamir) ComputeFunction(shares map[int][]int, party int) []int {
 
 	}
 	return nil
+}
+
+func distributeShares(shares []int, partySize int) {
+	for party := 1; party <= partySize; party++ {
+		shareBundle := primebundle.PrimeBundle{
+			ID:     uuid.Must(uuid.NewRandom()).String(),
+			Type:   "Share",
+			Shares: []int{shares[party - 1]},
+			From:   network.GetPartyNumber(),
+		}
+
+		if network.GetPartyNumber() == party {
+			wiresMutex.Lock()
+			wires[party] = shares[party - 1]
+			wiresMutex.Unlock()
+			//receivedShares = append(receivedShares, shareSlice...)
+		}else {
+			network.Send(shareBundle, party)
+		}
+
+	}
+}
+
+func distributeResult(result []int, partySize int) {
+
+	for party := 1; party <= partySize; party++ {
+		if network.GetPartyNumber() != party {
+			shareBundle := primebundle.PrimeBundle{
+				ID: uuid.Must(uuid.NewRandom()).String(),
+				Type: "Result",
+				Result: result[0],
+				From: network.GetPartyNumber(),
+			}
+
+			network.Send(shareBundle, party)
+		} else {
+			receivedResults[network.GetPartyNumber()] = result[0]
+		}
+	}
+}
+
+func removeGate(circuit Circuit.Circuit, gate Circuit.Gate, i int) []Circuit.Gate {
+	b := make([]Circuit.Gate, len(circuit.Gates))
+	copy(b, circuit.Gates)
+	// Remove the element at index i from a.
+	b[i] = b[len(b)-1] // Copy last element to index i.
+	b = b[:len(b)-1]   // Truncate slice.
+	return b
 }

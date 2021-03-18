@@ -16,7 +16,6 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
-	"sync"
 )
 
 type Receiver struct {
@@ -31,12 +30,6 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 				myPartyNumber = network.GetPartyNumber()
 				createField(match.Prime)
 				sizeSet = true
-			} else if match.Type == "Share"{
-				wiresMutex.Lock()
-				wires[match.From] = match.Shares[0]
-				wiresMutex.Unlock()
-			} else if match.Type == "Result" {
-				receivedResults[match.From] = match.Result
 			} else {
 				panic("Given type is unknown")
 			}
@@ -51,17 +44,13 @@ var secret int
 var sizeSet bool
 var myPartyNumber int
 var circuit Circuit.Circuit
-var wires = make(map[int]int)
-var wiresMutex = &sync.Mutex{}
-//Fjern igen til bedre sted:
-var receivedResults = make(map[int]int)
 
 func main() {
 	if os.Args[1] == "-p" {
 		finiteField = Prime.Prime{}
 		finiteField.InitSeed()
 		bundleType = primebundle.PrimeBundle{}
-		loadCircuit()
+		loadCircuit("Circuit.json")
 	}else {
 		finiteField = Binary.Binary{}
 		//TODO Add binary bundle
@@ -71,6 +60,7 @@ func main() {
 	secret, _ = strconv.Atoi(os.Args[3])
 
 	//TODO fjern hardcoding
+	//secretSharing = Shamir.Shamir{}
 	secretSharing = Shamir.Shamir{}
 
 	receiver := Receiver{}
@@ -109,6 +99,13 @@ func main() {
 			break
 		}
 	}
+
+	result := secretSharing.TheOneRing(circuit, secret)
+
+	fmt.Println(result)
+
+	/*
+
 	shares := secretSharing.ComputeShares(partySize, secret)
 
 	distributeShares(shares)
@@ -145,58 +142,11 @@ func main() {
 			break
 		}
 	}
+	*/
 
 	//multiplyResult := Multiplication.Multiply(secret, secretSharing, partySize)
 	//addResult := Add.Add(multiplyResult, secretSharing, partySize)
 	//fmt.Println("Done adding, got result:", addResult)
-}
-func distributeResult(result []int) {
-
-	for party := 1; party <= partySize; party++ {
-		if network.GetPartyNumber() != party {
-			shareBundle := primebundle.PrimeBundle{
-				ID: uuid.Must(uuid.NewRandom()).String(),
-				Type: "Result",
-				Result: result[0],
-				From: network.GetPartyNumber(),
-			}
-
-			network.Send(shareBundle, party)
-		} else {
-			receivedResults[network.GetPartyNumber()] = result[0]
-		}
-	}
-}
-
-func distributeShares(shares []int) {
-	for party := 1; party <= partySize; party++ {
-		shareBundle := primebundle.PrimeBundle{
-			ID:     uuid.Must(uuid.NewRandom()).String(),
-			Type:   "Share",
-			Shares: []int{shares[party - 1]},
-			From:   network.GetPartyNumber(),
-		}
-
-		if network.GetPartyNumber() == party {
-			wiresMutex.Lock()
-			wires[party] = shares[party - 1]
-			wiresMutex.Unlock()
-			//receivedShares = append(receivedShares, shareSlice...)
-		}else {
-			network.Send(shareBundle, party)
-		}
-
-	}
-}
-
-
-func removeGate(circuit Circuit.Circuit, gate Circuit.Gate, i int) []Circuit.Gate {
-	b := make([]Circuit.Gate, len(circuit.Gates))
-	copy(b, circuit.Gates)
-	// Remove the element at index i from a.
-	b[i] = b[len(b)-1] // Copy last element to index i.
-	b = b[:len(b)-1]   // Truncate slice.
-	return b
 }
 
 func createField(fieldSize int) {
@@ -204,8 +154,8 @@ func createField(fieldSize int) {
 	secretSharing.SetField(finiteField)
 }
 
-func loadCircuit() {
-	jsonFile, err := os.Open("Circuit.json")
+func loadCircuit(file string) {
+	jsonFile, err := os.Open(file)
 	// if we os.Open returns an error then handle it
 	if err != nil {
 		fmt.Println(err)

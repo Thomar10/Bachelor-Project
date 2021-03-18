@@ -46,8 +46,6 @@ func Add(secret int, sSharing secretsharing.Secret_Sharing, pSize int) int {
 
 	network.RegisterReceiver(receiver)
 
-	secretSharing.SetFunction("add")
-
 	shares = secretSharing.ComputeShares(partySize, secret)
 	fmt.Println("My shares are:", shares)
 
