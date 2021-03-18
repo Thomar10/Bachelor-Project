@@ -102,51 +102,8 @@ func main() {
 
 	result := secretSharing.TheOneRing(circuit, secret)
 
-	fmt.Println(result)
+	fmt.Println("Final result:", result)
 
-	/*
-
-	shares := secretSharing.ComputeShares(partySize, secret)
-
-	distributeShares(shares)
-	for {
-		for i, gate := range circuit.Gates {
-			wiresMutex.Lock()
-			input1, found1 := wires[gate.Input_one]
-			input2, found2 := wires[gate.Input_two]
-			wiresMutex.Unlock()
-			if found1 && found2 {
-				fmt.Println("Gate ready")
-				fmt.Println(gate)
-				//do operation
-				var output int
-				switch gate.Operation {
-					case "Addition":
-						output = (input1 + input2) % finiteField.GetSize()
-					case "Multiplication":
-						output = 3
-				}
-				wiresMutex.Lock()
-				wires[gate.GateNumber] = output
-				wiresMutex.Unlock()
-				circuit.Gates = removeGate(circuit, gate, i)
-				if len(circuit.Gates) == 0 {
-					distributeResult([]int{output})
-				}
-				break
-				//Remove gate from circuits.gates
-			}
-		}
-		if len(receivedResults) == partySize {
-			fmt.Println(Shamir.ComputeResultt(receivedResults, partySize))
-			break
-		}
-	}
-	*/
-
-	//multiplyResult := Multiplication.Multiply(secret, secretSharing, partySize)
-	//addResult := Add.Add(multiplyResult, secretSharing, partySize)
-	//fmt.Println("Done adding, got result:", addResult)
 }
 
 func createField(fieldSize int) {
