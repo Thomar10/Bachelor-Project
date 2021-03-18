@@ -6,9 +6,10 @@ import (
 	"MPC/Circuit"
 	finite "MPC/Finite-fields"
 	network "MPC/Network"
+	crand "crypto/rand"
 	"fmt"
 	"github.com/google/uuid"
-	"math"
+	"math/big"
 	"math/rand"
 	"sync"
 	"time"
@@ -39,26 +40,28 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 }
 
 var function string
-var wires = make(map[int]int)
+var wires = make(map[int]*big.Int)
 var wiresMutex = &sync.Mutex{}
-var receivedResults = make(map[int]int)
+var receivedResults = make(map[int]*big.Int)
 
 func (s Shamir) SetFunction(f string) {
 	function = f
 }
 
-func (s Shamir) ComputeShares(parties, secret int) []int {
+func (s Shamir) ComputeShares(parties int, secret *big.Int) []*big.Int {
 	// t should be less than half of connected parties t < 1/2 n
 	var t = (parties - 1) / 2 //Integer division rounds down automatically
 	//3 + 4x + 2x^2
 	//[3, 4, 2]
-	var polynomial = make([]int, t + 1)
+	var polynomial = make([]*big.Int, t + 1)
+
 	polynomial[0] = secret
 	for i := 1; i < t + 1; i++ {
-		polynomial[i] = rand.Intn(field.GetSize())
+		//TODO Måske gøre så vi kan få error ud og tjekke på (fuck go)
+		polynomial[i], _ = crand.Int(crand.Reader, field.GetSize())
 	}
 
-	var shares = make([]int, parties)
+	var shares = make([]*big.Int, parties)
 
 	for i := 1; i <= parties; i++ {
 		shares[i - 1] = calculatePolynomial(polynomial, i)
@@ -68,12 +71,7 @@ func (s Shamir) ComputeShares(parties, secret int) []int {
 }
 
 
-func computeResultt(shares map[int]int, parties int) int {
-	return Reconstruct(shares)
-
-}
-
-func (s Shamir) ComputeResult(ints []int) int {
+func (s Shamir) ComputeResult(ints []*big.Int) int {
 	panic("implement meeeeeeeeeeeeeeeeeeeeee!")
 	//return Reconstruct(shares)
 }
@@ -85,13 +83,13 @@ func (s Shamir) SetField(f finite.Finite) {
 	field = f
 }
 
-func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret int) int {
+func (s Shamir) TheOneRing(circuit Circuit.Circuit, sec int) int {
 	partySize := network.GetParties()
 
 	receiver := Receiver{}
 
 	network.RegisterReceiver(receiver)
-
+	secret := big.NewInt(int64(sec))
 	result := 0
 
 	shares := s.ComputeShares(partySize, secret)
@@ -107,19 +105,21 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret int) int {
 				fmt.Println("Gate ready")
 				fmt.Println(gate)
 				//do operation
-				var output int
+				var output *big.Int
 				switch gate.Operation {
 				case "Addition":
-					output = (input1 + input2) % field.GetSize()
+					//output = (input1 + input2) % field.GetSize()
+					output = new(big.Int).Add(input1, input2)
+					output.Mod(output, field.GetSize())
 				case "Multiplication":
-					output = 3
+					output = big.NewInt(3)
 				}
 				wiresMutex.Lock()
 				wires[gate.GateNumber] = output
 				wiresMutex.Unlock()
 				circuit.Gates = removeGate(circuit, gate, i)
 				if len(circuit.Gates) == 0 {
-					distributeResult([]int{output}, partySize)
+					distributeResult([]*big.Int{output}, partySize)
 				}
 				break
 				//Remove gate from circuits.gates
@@ -134,17 +134,19 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret int) int {
 	return result
 }
 
-func calculatePolynomial(polynomial []int, x int) int {
-	var result = 0
+func calculatePolynomial(polynomial []*big.Int, x int) *big.Int {
+	var result = big.NewInt(0)
 
 	for i := 0; i < len(polynomial); i++ {
-		result += polynomial[i] * int(math.Pow(float64(x), float64(i)))
+		//result += polynomial[i] * int(math.Pow(float64(x), float64(i)))
+		iterres := new(big.Int).Exp(big.NewInt(int64(x)), big.NewInt(int64(i)), nil)
+		result.Add(result, iterres)
 	}
 
-	return result % field.GetSize()
+	return result.Mod(result, field.GetSize())//result % field.GetSize()
 }
 
-func (s Shamir) ComputeFunction(shares map[int][]int, party int) []int {
+func (s Shamir) ComputeFunction(shares map[int][]*big.Int, party int) []*big.Int {
 	//Reconstruct(shares)
 	if function == "add" {
 
@@ -152,12 +154,12 @@ func (s Shamir) ComputeFunction(shares map[int][]int, party int) []int {
 	return nil
 }
 
-func distributeShares(shares []int, partySize int) {
+func distributeShares(shares []*big.Int, partySize int) {
 	for party := 1; party <= partySize; party++ {
 		shareBundle := primebundle.PrimeBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
 			Type:   "Share",
-			Shares: []int{shares[party - 1]},
+			Shares: []*big.Int{shares[party - 1]},
 			From:   network.GetPartyNumber(),
 		}
 
@@ -173,7 +175,7 @@ func distributeShares(shares []int, partySize int) {
 	}
 }
 
-func distributeResult(result []int, partySize int) {
+func distributeResult(result []*big.Int, partySize int) {
 
 	for party := 1; party <= partySize; party++ {
 		if network.GetPartyNumber() != party {

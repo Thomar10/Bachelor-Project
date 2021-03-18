@@ -1,5 +1,7 @@
 package Binary
 
+import "math/big"
+
 type Binary struct {
 
 }
@@ -8,19 +10,19 @@ func (b Binary) InitSeed() {
 	panic("implement me")
 }
 
-func (b Binary) SetSize(f int) {
+func (b Binary) SetSize(f *big.Int) {
 	panic("implement me")
 }
 
-func (b Binary) ComputeShares(parties, secret int) []int {
+func (b Binary) ComputeShares(parties, secret int) []*big.Int {
 	panic("implement me")
 }
 
 //TODO implement
-func (b Binary) GenerateField() int {
-	return 0
+func (b Binary) GenerateField() *big.Int {
+	panic("imeplement ne")
 }
 
-func (b Binary) GetSize() int {
-	return 0
+func (b Binary) GetSize() *big.Int {
+	panic("implement me")
 }

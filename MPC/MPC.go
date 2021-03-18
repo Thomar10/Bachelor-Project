@@ -10,10 +10,12 @@ import (
 	network "MPC/Network"
 	secretsharing "MPC/Secret-Sharing"
 	"MPC/Secret-Sharing/Shamir"
+	Simple_Sharing "MPC/Secret-Sharing/Simple-Sharing"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"strconv"
 )
@@ -60,8 +62,12 @@ func main() {
 	secret, _ = strconv.Atoi(os.Args[3])
 
 	//TODO fjern hardcoding
-	//secretSharing = Shamir.Shamir{}
-	secretSharing = Shamir.Shamir{}
+	if os.Args[4] == "-s" {
+		secretSharing = Simple_Sharing.Simple_Sharing{}
+	}else {
+		secretSharing = Shamir.Shamir{}
+	}
+
 
 	receiver := Receiver{}
 	network.RegisterReceiver(receiver)
@@ -106,7 +112,7 @@ func main() {
 
 }
 
-func createField(fieldSize int) {
+func createField(fieldSize *big.Int) {
 	finiteField.SetSize(fieldSize)
 	secretSharing.SetField(finiteField)
 }

@@ -7,6 +7,7 @@ import (
 	secretsharing "MPC/Secret-Sharing"
 	"fmt"
 	"github.com/google/uuid"
+	"math/big"
 )
 
 type Receiver struct {
@@ -34,11 +35,11 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 var secretSharing secretsharing.Secret_Sharing
 var partySize int
 
-var shares []int
-var receivedShares =  make(map[int][]int)
-var receivedResults []int
+var shares []*big.Int
+var receivedShares =  make(map[int][]*big.Int)
+var receivedResults []*big.Int
 
-func Multiply(secret int, sSharing secretsharing.Secret_Sharing, pSize int) int {
+func Multiply(secret *big.Int, sSharing secretsharing.Secret_Sharing, pSize int) *big.Int {
 	partySize = pSize
 	secretSharing = sSharing
 
@@ -46,8 +47,8 @@ func Multiply(secret int, sSharing secretsharing.Secret_Sharing, pSize int) int 
 
 	network.RegisterReceiver(receiver)
 
-
-	if secret != -1 {
+	r := secret.Cmp(big.NewInt(-1))
+	if r != 0 {
 		shares = secretSharing.ComputeShares(partySize, secret)
 		fmt.Println("My shares are:", shares)
 
@@ -66,7 +67,7 @@ func Multiply(secret int, sSharing secretsharing.Secret_Sharing, pSize int) int 
 
 func distributeShares() {
 	for party := 1; party <= partySize; party++ {
-		shareCopy := make([]int, len(shares))
+		shareCopy := make([]*big.Int, len(shares))
 		copy(shareCopy, shares)
 		shareSlice := shareCopy[:party - 1]
 		shareSlice2 := shareCopy[party:]
@@ -88,7 +89,7 @@ func distributeShares() {
 	}
 }
 
-func distributeResult(result []int) {
+func distributeResult(result []*big.Int) {
 	counter := 0
 	for party := 1; party <= partySize; party++ {
 		if network.GetPartyNumber() != party {

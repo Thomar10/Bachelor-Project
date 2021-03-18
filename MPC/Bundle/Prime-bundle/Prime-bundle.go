@@ -1,10 +1,12 @@
 package Prime_bundle
 
+import "math/big"
+
 type PrimeBundle struct {
 	ID string
 	Type string
-	Prime int
-	Shares []int
-	Result int
+	Prime *big.Int
+	Shares []*big.Int
+	Result *big.Int
 	From int
 }

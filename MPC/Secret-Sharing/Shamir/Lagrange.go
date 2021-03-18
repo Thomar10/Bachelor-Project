@@ -8,7 +8,7 @@ import (
 	"sort"
 )
 
-func Reconstruct(shares map[int]int) int {
+func Reconstruct(shares map[int]*big.Int) int {
 	keys := reflect.ValueOf(shares).MapKeys()
 	var keysArray []int
 	for _, k := range keys {
@@ -16,25 +16,29 @@ func Reconstruct(shares map[int]int) int {
 	}
 	sort.Ints(keysArray)
 	//deltas := make([][]int, len(keysArray))
-	secret := 0
+	secret := big.NewInt(0)
 	for _, key := range keysArray {
-		secret += shares[key] * computeDelta(key, keysArray)[0]
+		//secret += shares[key] * computeDelta(key, keysArray)[0]
+		iterRes := new(big.Int).Mod(shares[key], computeDelta(key, keysArray)[0])
+		secret.Add(secret, iterRes)
 		//deltas[i] = computeDelta(key, keysArray)
 	}
 
-	return secret % field.GetSize()
+	return int(secret.Mod(secret, field.GetSize()).Int64())//secret % field.GetSize()
 
 }
 
-func computeDelta(key int, keys []int) []int {
-	var talker = 1
+func computeDelta(key int, keys []int) []*big.Int {
+	var talker = big.NewInt(1)
 	for _, j := range keys {
 		if j == key {
 			continue
 		}
-		talker *= key - j
+		//talker *= key - j
+		talker.Mul(talker, new(big.Int).Sub(big.NewInt(int64(key)), big.NewInt(int64(j))))
 	}
-	talker = talker % field.GetSize()
+	//talker = talker % field.GetSize()
+	talker.Mod(talker, field.GetSize())
 	var inverseTalker = findInverse(talker, field.GetSize())
 	keyIndex := 0
 	for i := 0; i < len(keys); i++ {
@@ -44,43 +48,51 @@ func computeDelta(key int, keys []int) []int {
 	}
 	keysWithoutkey := removeElementI(keys, keyIndex)
 	permutations := computePermutations(keysWithoutkey)
-	var polynomial = make([]int, len(keys))
+	var polynomial = make([]*big.Int, len(keys))
 	//keys = 3, 4, 5, 6 -> delta3
 	//(x-4)(x-5)(x-6)
 	//[-120, 74, -15, 1]
 	for i := 1; i < len(polynomial) - 1; i++ {
 		polynomial[i] = multipleAllWithSize(len(keysWithoutkey) - i, permutations)
 	}
-	polynomial[0] = 1
-	polynomial[len(polynomial) - 1] = 1
+	polynomial[0] = big.NewInt(1)
+	polynomial[len(polynomial) - 1] = big.NewInt(1)
 	for _, number := range keysWithoutkey {
-		polynomial[0] = polynomial[0] * -number
+		//polynomial[0] = polynomial[0] * -number
+		polynomial[0] = polynomial[0].Mul(polynomial[0], big.NewInt(int64(-number)))
 	}
 	fmt.Println("Delta poly", polynomial)
 
 	for i, number := range polynomial {
-		number = number % field.GetSize()
-		if number < 0 {
-			number = field.GetSize() + number
+		//number = number % field.GetSize()
+		number.Mod(number, field.GetSize())
+		r := number.Cmp(big.NewInt(0))
+		if r < 0 {
+			//number = field.GetSize() + number
+			number.Add(field.GetSize(), number)
 		}
 		// number * inverseTalker % prime
-		x := big.NewInt(1).Mul(big.NewInt(int64(number)), big.NewInt(int64(inverseTalker)))
-		polynomial[i] = int(big.NewInt(1).Mod(x, big.NewInt(int64(field.GetSize()))).Int64())
+		x := big.NewInt(1).Mul(number, inverseTalker)
+		polynomial[i] = big.NewInt(1).Mod(x, field.GetSize())
 
 	}
 	fmt.Println("Delta poly after mod", polynomial)
 	return polynomial
 }
 
-func multipleAllWithSize(k int, permutations [][]int) int {
-	result := 0
+func multipleAllWithSize(k int, permutations [][]int) *big.Int {
+	result := big.NewInt(0)
 	for _, perm := range permutations {
 		if len(perm) == k {
-			subresult := 1
+			subresult := big.NewInt(1)
 			for _, number := range perm {
-				subresult = (subresult * -number) % field.GetSize()
+				//subresult = (subresult * -number) % field.GetSize()
+				subresult.Mul(subresult, big.NewInt(int64(-number)))
+				subresult.Mod(subresult, field.GetSize())
+
 			}
-			result += subresult % field.GetSize()
+			//result += subresult % field.GetSize()
+			result.Add(result, subresult.Mod(subresult, field.GetSize()))
 		}
 	}
 
@@ -152,14 +164,16 @@ func intToBinaryArray(number, arraySize int) []int {
 	return result
 }
 
-func findInverse(a int, prime int) int {
-	if a < 0 {
-		a = prime + a
+func findInverse(a, prime *big.Int) *big.Int {
+	r := a.Cmp(big.NewInt(0))
+	if r < 0 {
+		//a = prime + a
+		a.Add(prime, a)
 	}
 	result := big.NewInt(1)
-	result.Exp(big.NewInt(int64(a)), big.NewInt(int64(prime-2)), big.NewInt(int64(prime)))
+	result.Exp(a, new(big.Int).Sub(prime, big.NewInt(2)), prime)
 	fmt.Println("inverseTalker", result)
-	return int(result.Int64())
+	return result
 	//return int(math.Pow(float64(a), float64(prime - 2))) % prime
 }
 

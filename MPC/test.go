@@ -1,17 +1,20 @@
 package main
 
 import (
+	"fmt"
 	"math"
+	"math/big"
 )
 
 /*
 Test fil til at teste go kode uden at køre hele programmet xd
 */
 
-/*
-func main() {
 
-	fmt.Println(calcT(3))
+func main() {
+	result := make([]*big.Int, 5)
+	fmt.Println(result)
+	/*	fmt.Println(calcT(3))
 
 
 	secretSharing := Shamir.Shamir{}
@@ -27,7 +30,7 @@ func main() {
 		test[i] = shares[i - 1]
 	}
 	fmt.Println(test)
-	fmt.Println("Reconstructed original share", Shamir.Reconstruct(test))
+	fmt.Println("Reconstructed original share", Shamir.Reconstruct(test))*/
 	//shares := make(map[int][]int)
 	//shares[3] = []int{6}
 	//shares[4] = []int{6}
@@ -39,7 +42,7 @@ func main() {
 	//fmt.Println(findInverse(-2, 11))
 
 }
-*/
+
 
 func calcT(parties int) int {
 	return (parties - 1) / 2

@@ -3,6 +3,7 @@ package Prime
 import (
 	crand "crypto/rand"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"time"
 )
@@ -16,36 +17,20 @@ func (p Prime) InitSeed() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-func (p Prime) SetSize(f int) {
+func (p Prime) SetSize(f *big.Int) {
 	prime = f
 }
-func (p Prime) GetSize() int {
+func (p Prime) GetSize() *big.Int {
 	return prime
 }
 
-var prime int
+var prime *big.Int
 
-func (p Prime) GenerateField() int {
-	bigPrime, err := crand.Prime(crand.Reader, 32) //32 to avoid errors when converting to int
+func (p Prime) GenerateField() *big.Int {
+	bigPrime, err := crand.Prime(crand.Reader, 32) //32 to because it should be big enough
 	if err != nil {
 		fmt.Println("Unable to compute prime", err.Error())
-		return 0
+		return big.NewInt(0)
 	}
-	return int(bigPrime.Int64())
-}
-
-
-func (p Prime) ComputeShares(parties, secret int) []int {
-	return nil
-}
-
-func randomNumberInZ(prime int) int {
-	return rand.Intn(prime)
-}
-
-
-
-//TODO Complete add multiply etc.
-func Add(a, b int) int {
-	return 0
+	return bigPrime
 }
