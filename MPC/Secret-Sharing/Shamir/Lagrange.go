@@ -1,7 +1,9 @@
 package Shamir
 
 import (
+	"fmt"
 	"math"
+	"math/big"
 	"reflect"
 	"sort"
 )
@@ -54,17 +56,19 @@ func computeDelta(key int, keys []int) []int {
 	for _, number := range keysWithoutkey {
 		polynomial[0] = polynomial[0] * -number
 	}
-
+	fmt.Println("Delta poly", polynomial)
 
 	for i, number := range polynomial {
-		polynomial[i] = number % field.GetSize()
-		polyIndex := (number * inverseTalker) % field.GetSize()
-		if polyIndex < 0 {
-			polynomial[i] = field.GetSize() + polyIndex
-		}else {
-			polynomial[i] = polyIndex
+		number = number % field.GetSize()
+		if number < 0 {
+			number = field.GetSize() + number
 		}
+		// number * inverseTalker % prime
+		x := big.NewInt(1).Mul(big.NewInt(int64(number)), big.NewInt(int64(inverseTalker)))
+		polynomial[i] = int(big.NewInt(1).Mod(x, big.NewInt(int64(field.GetSize()))).Int64())
+
 	}
+	fmt.Println("Delta poly after mod", polynomial)
 	return polynomial
 }
 
@@ -74,11 +78,12 @@ func multipleAllWithSize(k int, permutations [][]int) int {
 		if len(perm) == k {
 			subresult := 1
 			for _, number := range perm {
-				subresult = subresult * -number
+				subresult = (subresult * -number) % field.GetSize()
 			}
-			result += subresult
+			result += subresult % field.GetSize()
 		}
 	}
+
 	return result
 }
 
@@ -151,7 +156,11 @@ func findInverse(a int, prime int) int {
 	if a < 0 {
 		a = prime + a
 	}
-	return int(math.Pow(float64(a), float64(prime - 2))) % prime
+	result := big.NewInt(1)
+	result.Exp(big.NewInt(int64(a)), big.NewInt(int64(prime-2)), big.NewInt(int64(prime)))
+	fmt.Println("inverseTalker", result)
+	return int(result.Int64())
+	//return int(math.Pow(float64(a), float64(prime - 2))) % prime
 }
 
 //Itoh–Tsujii inversion algorithm

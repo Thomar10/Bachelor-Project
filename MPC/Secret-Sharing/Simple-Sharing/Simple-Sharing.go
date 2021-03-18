@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"reflect"
 	"sort"
+	"time"
 )
 
 var field finite.Finite
@@ -16,6 +17,7 @@ type Simple_Sharing struct {
 }
 
 func (s Simple_Sharing) SetField(f finite.Finite) {
+	rand.Seed(time.Now().UnixNano())
 	field = f
 }
 
@@ -26,7 +28,7 @@ func (s Simple_Sharing) ComputeShares(parties, secret int) []int {
 	lastShare := secret
 	//Create the n - 1 random shares
 	for s := 1; s < parties; s++ {
-		shares = append(shares, randomNumberInZ(prime))
+		shares = append(shares, rand.Intn(prime))
 	}
 	//Create the nth share
 	for _, share := range shares {
@@ -42,9 +44,6 @@ func (s Simple_Sharing) ComputeShares(parties, secret int) []int {
 	return shares
 }
 
-func randomNumberInZ(prime int) int {
-	return rand.Intn(prime)
-}
 
 func (s Simple_Sharing) SetFunction(f string) {
 	function = f

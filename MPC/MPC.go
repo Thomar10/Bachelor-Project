@@ -110,13 +110,7 @@ func main() {
 		}
 	}
 	shares := secretSharing.ComputeShares(partySize, secret)
-	fmt.Println("Reconstruction the secret value")
-	fmt.Println("my shares", shares)
-	test := make(map[int]int)
-	for i := 1; i < len(shares); i++ {
-		test[i] = shares[i - 1]
-	}
-	fmt.Println(Shamir.Reconstruct(test))
+
 	distributeShares(shares)
 	for {
 		for i, gate := range circuit.Gates {

@@ -1,34 +1,45 @@
 package main
 
 import (
+	"MPC/Finite-fields/Prime"
+	"MPC/Secret-Sharing/Shamir"
+	"fmt"
 	"math"
 )
 
 /*
 Test fil til at teste go kode uden at køre hele programmet xd
 */
-//func main() {
-//
-//	fmt.Println(calcT(3))
-//
-//
-//	//secretSharing := Shamir.Shamir{}
-//	//finiteField := Prime.Prime{}
-//	//finiteField.SetSize(11)
-//	//secretSharing.SetField(finiteField)
-//	//
-//	//
-//	//shares := make(map[int][]int)
-//	//shares[3] = []int{6}
-//	//shares[4] = []int{6}
-//	//shares[5] = []int{8}
-//	//secretSharing.ComputeFunction(shares, 1)
-//
-//	//fmt.Println(permutationsInts)
-//	//fmt.Println(math.Pow(2,3))
-//	//fmt.Println(findInverse(-2, 11))
-//
-//}
+func main() {
+
+	fmt.Println(calcT(3))
+
+
+	secretSharing := Shamir.Shamir{}
+	finiteField := Prime.Prime{}
+	//finiteField.SetSize(3780287809)
+	finiteField.SetSize(137)
+	secretSharing.SetField(finiteField)
+	shares := secretSharing.ComputeShares(8, 5)
+
+	fmt.Println(shares)
+	test := make(map[int]int)
+	for i := 1; i < len(shares); i++ {
+		test[i] = shares[i - 1]
+	}
+	fmt.Println(test)
+	fmt.Println("Reconstructed original share", Shamir.Reconstruct(test))
+	//shares := make(map[int][]int)
+	//shares[3] = []int{6}
+	//shares[4] = []int{6}
+	//shares[5] = []int{8}
+	//secretSharing.ComputeFunction(shares, 1)
+
+	//fmt.Println(permutationsInts)
+	//fmt.Println(math.Pow(2,3))
+	//fmt.Println(findInverse(-2, 11))
+
+}
 
 func calcT(parties int) int {
 	return (parties - 1) / 2
