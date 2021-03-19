@@ -33,7 +33,7 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 				createField(match.Prime)
 				sizeSet = true
 			} else {
-				panic("Given type is unknown")
+				panic("Given type is unknown: "+ match.Type)
 			}
 	}
 }

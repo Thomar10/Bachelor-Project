@@ -19,7 +19,7 @@ func Reconstruct(shares map[int]*big.Int) int {
 	secret := big.NewInt(0)
 	for _, key := range keysArray {
 		//secret += shares[key] * computeDelta(key, keysArray)[0]
-		iterRes := new(big.Int).Mod(shares[key], computeDelta(key, keysArray)[0])
+		iterRes := new(big.Int).Mul(shares[key], computeDelta(key, keysArray)[0])
 		secret.Add(secret, iterRes)
 		//deltas[i] = computeDelta(key, keysArray)
 	}

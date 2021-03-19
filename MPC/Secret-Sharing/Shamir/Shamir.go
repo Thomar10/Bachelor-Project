@@ -147,13 +147,6 @@ func calculatePolynomial(polynomial []*big.Int, x int) *big.Int {
 	return result.Mod(result, field.GetSize())//result % field.GetSize()
 }
 
-func (s Shamir) ComputeFunction(shares map[int][]*big.Int, party int) []*big.Int {
-	//Reconstruct(shares)
-	if function == "add" {
-
-	}
-	return nil
-}
 
 func distributeShares(shares []*big.Int, partySize int) {
 	for party := 1; party <= partySize; party++ {
@@ -201,4 +194,12 @@ func removeGate(circuit Circuit.Circuit, gate Circuit.Gate, i int) []Circuit.Gat
 	b[i] = b[len(b)-1] // Copy last element to index i.
 	b = b[:len(b)-1]   // Truncate slice.
 	return b
+}
+
+func (s Shamir) ComputeFunction(shares map[int][]*big.Int, party int) []*big.Int {
+	//Reconstruct(shares)
+	if function == "add" {
+
+	}
+	return nil
 }
