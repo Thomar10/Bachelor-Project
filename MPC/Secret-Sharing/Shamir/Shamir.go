@@ -33,9 +33,12 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			wiresMutex.Unlock()
 		} else if match.Type == "MultShare" {
 			gateMutex.Lock()
+			multMap = gateMult[match.Gate]
 			multMap[match.From] = match.Shares[0]
 			gateMult[match.Gate] = multMap
 			gateMutex.Unlock()
+			fmt.Println("Gate map after getting a share", gateMult)
+			fmt.Println("The ")
 		} else if match.Type == "Result" {
 			receivedResults[match.From] = match.Result
 		} else {
@@ -124,6 +127,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, sec int) int {
 					interMult := new(big.Int).Mul(input1, input2)
 					interMult.Mod(interMult, field.GetSize())
 					multShares := s.ComputeShares(partySize, interMult)
+					fmt.Println("multshares", multShares)
 					distributeMultShares(multShares, partySize, gate.GateNumber)
 					for {
 						gateMutex.Lock()
@@ -136,6 +140,8 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, sec int) int {
 					gateMutex.Lock()
 					multMaaaaap := gateMult[gate.GateNumber]
 					gateMutex.Unlock()
+					fmt.Println("Gatemap", gateMult)
+					fmt.Println("Mult map to reconstruct", multMaaaaap)
 					someint := Reconstruct(multMaaaaap)
 					output = big.NewInt(int64(someint))
 				}
@@ -183,6 +189,10 @@ func distributeMultShares(shares []*big.Int, partySize int, gate int) {
 
 		if network.GetPartyNumber() == party {
 			gateMutex.Lock()
+			multMap = gateMult[gate]
+			if multMap == nil {
+				multMap = make(map[int]*big.Int)
+			}
 			multMap[party] = shares[party - 1]
 			gateMult[gate] = multMap
 			gateMutex.Unlock()
