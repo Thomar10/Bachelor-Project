@@ -9,4 +9,5 @@ type PrimeBundle struct {
 	Shares []*big.Int
 	Result *big.Int
 	From int
+	Gate int
 }

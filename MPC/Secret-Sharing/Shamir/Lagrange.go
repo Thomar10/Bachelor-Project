@@ -1,7 +1,6 @@
 package Shamir
 
 import (
-	"fmt"
 	"math"
 	"math/big"
 	"reflect"
@@ -61,7 +60,6 @@ func computeDelta(key int, keys []int) []*big.Int {
 		//polynomial[0] = polynomial[0] * -number
 		polynomial[0].Mul(polynomial[0], big.NewInt(int64(-number)))
 	}
-	fmt.Println("Delta poly", polynomial)
 
 	for i, number := range polynomial {
 		//number = number % field.GetSize()

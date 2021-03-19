@@ -31,6 +31,11 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			wiresMutex.Lock()
 			wires[match.From] = match.Shares[0]
 			wiresMutex.Unlock()
+		} else if match.Type == "MultShare" {
+			gateMutex.Lock()
+			multMap[match.From] = match.Shares[0]
+			gateMult[match.Gate] = multMap
+			gateMutex.Unlock()
 		} else if match.Type == "Result" {
 			receivedResults[match.From] = match.Result
 		} else {
@@ -41,7 +46,10 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 
 var function string
 var wires = make(map[int]*big.Int)
+var multMap = make(map[int]*big.Int)
+var gateMult = make(map[int]map[int]*big.Int)
 var wiresMutex = &sync.Mutex{}
+var gateMutex = &sync.Mutex{}
 var receivedResults = make(map[int]*big.Int)
 
 func (s Shamir) SetFunction(f string) {
@@ -93,6 +101,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, sec int) int {
 	result := 0
 
 	shares := s.ComputeShares(partySize, secret)
+	fmt.Println("Shares to the problem", shares)
 	distributeShares(shares, partySize)
 
 	for {
@@ -112,7 +121,23 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, sec int) int {
 					output = new(big.Int).Add(input1, input2)
 					output.Mod(output, field.GetSize())
 				case "Multiplication":
-					output = big.NewInt(3)
+					interMult := new(big.Int).Mul(input1, input2)
+					interMult.Mod(interMult, field.GetSize())
+					multShares := s.ComputeShares(partySize, interMult)
+					distributeMultShares(multShares, partySize, gate.GateNumber)
+					for {
+						gateMutex.Lock()
+						multLen := len(gateMult[gate.GateNumber])
+						gateMutex.Unlock()
+						if multLen == partySize {
+							break
+						}
+					}
+					gateMutex.Lock()
+					multMaaaaap := gateMult[gate.GateNumber]
+					gateMutex.Unlock()
+					someint := Reconstruct(multMaaaaap)
+					output = big.NewInt(int64(someint))
 				}
 				wiresMutex.Lock()
 				wires[gate.GateNumber] = output
@@ -146,7 +171,28 @@ func calculatePolynomial(polynomial []*big.Int, x int) *big.Int {
 
 	return result.Mod(result, field.GetSize())//result % field.GetSize()
 }
+func distributeMultShares(shares []*big.Int, partySize int, gate int) {
+	for party := 1; party <= partySize; party++ {
+		shareBundle := primebundle.PrimeBundle{
+			ID:     uuid.Must(uuid.NewRandom()).String(),
+			Type:   "MultShare",
+			Shares: []*big.Int{shares[party - 1]},
+			From:   network.GetPartyNumber(),
+			Gate: gate,
+		}
 
+		if network.GetPartyNumber() == party {
+			gateMutex.Lock()
+			multMap[party] = shares[party - 1]
+			gateMult[gate] = multMap
+			gateMutex.Unlock()
+			//receivedShares = append(receivedShares, shareSlice...)
+		}else {
+			network.Send(shareBundle, party)
+		}
+
+	}
+}
 
 func distributeShares(shares []*big.Int, partySize int) {
 	for party := 1; party <= partySize; party++ {
