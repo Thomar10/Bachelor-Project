@@ -52,21 +52,22 @@ func main() {
 		finiteField = Prime.Prime{}
 		finiteField.InitSeed()
 		bundleType = primebundle.PrimeBundle{}
-		loadCircuit("Circuit.json")
 	}else {
 		finiteField = Binary.Binary{}
 		//TODO Add binary bundle
 	}
-	partySize, _ = strconv.Atoi(os.Args[2])
-
-	secret, _ = strconv.Atoi(os.Args[3])
-
-	//TODO fjern hardcoding
-	if os.Args[4] == "-s" {
+	if os.Args[2] == "-s" {
 		secretSharing = Simple_Sharing.Simple_Sharing{}
-	}else {
+		loadCircuit("SimpleCircuit.json")
+	}else if os.Args[2] == "-sss" {
 		secretSharing = Shamir.Shamir{}
+		loadCircuit("Circuit.json")
+	} else {
+		panic("No secret sharing given")
 	}
+	partySize, _ = strconv.Atoi(os.Args[3])
+
+	secret, _ = strconv.Atoi(os.Args[4])
 
 
 	receiver := Receiver{}

@@ -15,7 +15,7 @@ type Receiver struct {
 }
 
 func (r Receiver) Receive(bundle bundle.Bundle) {
-	fmt.Println("I have received bundle:", bundle)
+	//fmt.Println("I have received bundle:", bundle)
 	switch match := bundle.(type) {
 	case primebundle.PrimeBundle:
 		if match.Type == "Share" {
@@ -78,7 +78,7 @@ func distributeShares() {
 			Shares: shareSlice,
 			From:   network.GetPartyNumber(),
 		}
-		fmt.Println("Sending shares: ", shareSlice, "To party", party)
+		//fmt.Println("Sending shares: ", shareSlice, "To party", party)
 		if network.GetPartyNumber() == party {
 			receivedShares[network.GetPartyNumber()] = shareSlice
 			//receivedShares = append(receivedShares, shareSlice...)

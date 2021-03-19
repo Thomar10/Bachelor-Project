@@ -59,7 +59,7 @@ func computeDelta(key int, keys []int) []*big.Int {
 	polynomial[len(polynomial) - 1] = big.NewInt(1)
 	for _, number := range keysWithoutkey {
 		//polynomial[0] = polynomial[0] * -number
-		polynomial[0] = polynomial[0].Mul(polynomial[0], big.NewInt(int64(-number)))
+		polynomial[0].Mul(polynomial[0], big.NewInt(int64(-number)))
 	}
 	fmt.Println("Delta poly", polynomial)
 
@@ -73,10 +73,10 @@ func computeDelta(key int, keys []int) []*big.Int {
 		}
 		// number * inverseTalker % prime
 		x := big.NewInt(1).Mul(number, inverseTalker)
-		polynomial[i] = big.NewInt(1).Mod(x, field.GetSize())
+		polynomial[i] = x.Mod(x, field.GetSize())
 
 	}
-	fmt.Println("Delta poly after mod", polynomial)
+
 	return polynomial
 }
 
@@ -89,6 +89,7 @@ func multipleAllWithSize(k int, permutations [][]int) *big.Int {
 				//subresult = (subresult * -number) % field.GetSize()
 				subresult.Mul(subresult, big.NewInt(int64(-number)))
 				subresult.Mod(subresult, field.GetSize())
+
 
 			}
 			//result += subresult % field.GetSize()
@@ -142,12 +143,12 @@ func computePermutations(keys []int) [][]int {
 }
 
 func removeElementI(a []int, i int) []int {
-	b := make([]int, len(a))
-	copy(b, a)
+	c := make([]int, len(a))
+	copy(c, a)
 	// Remove the element at index i from a.
-	b[i] = b[len(b)-1] // Copy last element to index i.
-	b = b[:len(b)-1]   // Truncate slice.
-	return b
+	c[i] = c[len(c)-1] // Copy last element to index i.
+	c = c[:len(c)-1]   // Truncate slice.
+	return c
 }
 
 //https://stackoverflow.com/questions/8151435/integer-to-binary-array/8151674
@@ -172,7 +173,6 @@ func findInverse(a, prime *big.Int) *big.Int {
 	}
 	result := big.NewInt(1)
 	result.Exp(a, new(big.Int).Sub(prime, big.NewInt(2)), prime)
-	fmt.Println("inverseTalker", result)
 	return result
 	//return int(math.Pow(float64(a), float64(prime - 2))) % prime
 }

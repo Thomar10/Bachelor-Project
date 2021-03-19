@@ -65,8 +65,8 @@ func Add(secret *big.Int, sSharing secretsharing.Secret_Sharing, pSize int) int 
 	for {
 		if partySize == len(receivedResults) {
 			result := secretSharing.ComputeResult(receivedResults) // / (partySize - 1)
-			fmt.Println("Got the following result: ", result)
-			fmt.Println("My peer list looks as follows: ", network.Peers())
+			//fmt.Println("Got the following result: ", result)
+			//fmt.Println("My peer list looks as follows: ", network.Peers())
 			return result
 		}
 	}

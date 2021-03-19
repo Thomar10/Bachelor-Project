@@ -83,7 +83,6 @@ func (s Simple_Sharing) TheOneRing(circuit Circuit.Circuit, secret int) int {
 			}
 			function = "Multiplication"
 			multiplyResult := Multiplication.Multiply(big.NewInt(int64(secret)), s, partySize)
-			fmt.Println("Im party", network.GetPartyNumber(), "With u being", multiplyResult)
 			function = "Addition"
 			result = Add.Add(multiplyResult, s, partySize)
 		default:
@@ -104,10 +103,10 @@ func (s Simple_Sharing) ComputeFunction(shares map[int][]*big.Int, party int) []
 		for i := 0; i < resultSize; i++ {
 			for _, share := range shares {
 				//result[i] += share[i]
-				result[i] = result[i].Add(result[i], share[i])
+				result[i].Add(result[i], share[i])
 			}
 			//result[i] = result[i] % field.GetSize()
-			result[i] = result[i].Mod(result[i], field.GetSize())
+			result[i].Mod(result[i], field.GetSize())
 		}
 	} else if function == "Multiplication" {
 		keys := reflect.ValueOf(shares).MapKeys()
@@ -117,23 +116,22 @@ func (s Simple_Sharing) ComputeFunction(shares map[int][]*big.Int, party int) []
 		}
 		sort.Ints(keysArray)
 		size := keysArray[0]
-		//Vi kan kun gange 2 - parties er ikke altid 1 og 2, men vælger laveste som 1 og næste som 2
+		//Everyone needs to have same party order
 		party1 := keysArray[0]
 		party2 := keysArray[1]
 		i := party - 1
 		for j := 0; j < len(shares[size]); j++ {
-			fmt.Println("J is:", j)
 			//Sidste party
 			if i == len(shares[size]) {
 				//result[0] += (shares[party1][0] * shares[party2][j]) % field.GetSize()
 				mulBig := new(big.Int).Mul(shares[party1][0], shares[party2][j])
 				modBig := new(big.Int).Mod(mulBig, field.GetSize())
-				result[0] = result[0].Add(result[0], modBig)
+				result[0].Add(result[0], modBig)
 			}else {
 				//result[0] += (shares[party1][i] * shares[party2][j]) % field.GetSize()
 				mulBig := new(big.Int).Mul(shares[party1][i], shares[party2][j])
 				modBig := new(big.Int).Mod(mulBig, field.GetSize())
-				result[0] = result[0].Add(result[0], modBig)
+				result[0].Add(result[0], modBig)
 			}
 
 		}
@@ -141,21 +139,21 @@ func (s Simple_Sharing) ComputeFunction(shares map[int][]*big.Int, party int) []
 			//result[0] += (shares[party1][len(shares[size]) +  (i - 1)] * shares[party2][len(shares[size]) + (i - 2)]) % field.GetSize()
 			mulBig := new(big.Int).Mul(shares[party1][len(shares[size]) +  (i - 1)], shares[party2][len(shares[size]) + (i - 2)])
 			modBig := new(big.Int).Mod(mulBig, field.GetSize())
-			result[0] = result[0].Add(result[0], modBig)
+			result[0].Add(result[0], modBig)
 		} else if i - 2 < 0 {
 			//result[0] += (shares[party1][(i - 1)] * shares[party2][len(shares[size]) + (i - 2)]) % field.GetSize()
 			mulBig := new(big.Int).Mul(shares[party1][(i - 1)], shares[party2][len(shares[size]) + (i - 2)])
 			modBig := new(big.Int).Mod(mulBig, field.GetSize())
-			result[0] = result[0].Add(result[0], modBig)
+			result[0].Add(result[0], modBig)
 		} else {
 			//result[0] += (shares[party1][(i - 1)] * shares[party2][(i - 2)]) % field.GetSize()
 			mulBig := new(big.Int).Mul(shares[party1][(i - 1)], shares[party2][(i - 2)])
 			modBig := new(big.Int).Mod(mulBig, field.GetSize())
-			result[0] = result[0].Add(result[0], modBig)
+			result[0].Add(result[0], modBig)
 		}
 
 		//result[0] = result[0] % field.GetSize()
-		result[0] = result[0].Mod(result[0], field.GetSize())
+		result[0].Mod(result[0], field.GetSize())
 /*		if result[0] < 0 {
 			result[0] = field.GetSize() + result[0]
 		}*/
@@ -170,7 +168,7 @@ func (s Simple_Sharing) ComputeFunction(shares map[int][]*big.Int, party int) []
 }
 
 func (s Simple_Sharing) ComputeResult(results []*big.Int) int {
-	result := big.NewInt(int64(0)) //TODO: Alternativt new(big.Int)
+	result := big.NewInt(0)
 	for _, r := range results {
 		//result += r
 		result.Add(result, r)
