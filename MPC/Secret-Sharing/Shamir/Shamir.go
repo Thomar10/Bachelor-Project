@@ -140,6 +140,7 @@ func calculatePolynomial(polynomial []*big.Int, x int) *big.Int {
 	for i := 0; i < len(polynomial); i++ {
 		//result += polynomial[i] * int(math.Pow(float64(x), float64(i)))
 		iterres := new(big.Int).Exp(big.NewInt(int64(x)), big.NewInt(int64(i)), nil)
+		iterres.Mul(iterres, polynomial[i])
 		result.Add(result, iterres)
 	}
 
