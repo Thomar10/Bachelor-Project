@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"math"
-	"math/big"
 )
 
 /*
@@ -12,8 +10,7 @@ Test fil til at teste go kode uden at køre hele programmet xd
 
 
 func main() {
-	result := make([]*big.Int, 5)
-	fmt.Println(result)
+
 	/*	fmt.Println(calcT(3))
 
 

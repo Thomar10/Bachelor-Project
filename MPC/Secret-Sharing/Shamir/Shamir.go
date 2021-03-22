@@ -34,6 +34,9 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 		} else if match.Type == "MultShare" {
 			gateMutex.Lock()
 			multMap = gateMult[match.Gate]
+			if multMap == nil {
+				multMap = make(map[int]*big.Int)
+			}
 			multMap[match.From] = match.Shares[0]
 			gateMult[match.Gate] = multMap
 			gateMutex.Unlock()

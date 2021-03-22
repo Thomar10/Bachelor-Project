@@ -1,11 +1,33 @@
 package Shamir
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 	"reflect"
 	"sort"
 )
+
+
+func ReconstructPolynomial(shares map[int]*big.Int) int {
+	keys := reflect.ValueOf(shares).MapKeys()
+	var keysArray []int
+	for _, k := range keys {
+		keysArray = append(keysArray, (k.Interface()).(int))
+	}
+	sort.Ints(keysArray)
+	//deltas := make([][]int, len(keysArray))
+	secret := big.NewInt(0)
+	for _, key := range keysArray {
+		//secret += shares[key] * computeDelta(key, keysArray)[0]
+		iterRes := new(big.Int).Mul(shares[key], computeDeltaPolynomial(key, keysArray)[0])
+		secret.Add(secret, iterRes)
+		//deltas[i] = computeDelta(key, keysArray)
+	}
+
+	return int(secret.Mod(secret, field.GetSize()).Int64())//secret % field.GetSize()
+
+}
 
 func Reconstruct(shares map[int]*big.Int) int {
 	keys := reflect.ValueOf(shares).MapKeys()
@@ -18,7 +40,7 @@ func Reconstruct(shares map[int]*big.Int) int {
 	secret := big.NewInt(0)
 	for _, key := range keysArray {
 		//secret += shares[key] * computeDelta(key, keysArray)[0]
-		iterRes := new(big.Int).Mul(shares[key], computeDelta(key, keysArray)[0])
+		iterRes := new(big.Int).Mul(shares[key], computeDelta(key, keysArray))
 		secret.Add(secret, iterRes)
 		//deltas[i] = computeDelta(key, keysArray)
 	}
@@ -27,7 +49,7 @@ func Reconstruct(shares map[int]*big.Int) int {
 
 }
 
-func computeDelta(key int, keys []int) []*big.Int {
+func computeDeltaPolynomial(key int, keys []int) []*big.Int {
 	var talker = big.NewInt(1)
 	for _, j := range keys {
 		if j == key {
@@ -50,6 +72,7 @@ func computeDelta(key int, keys []int) []*big.Int {
 	var polynomial = make([]*big.Int, len(keys))
 	//keys = 3, 4, 5, 6 -> delta3
 	//(x-4)(x-5)(x-6)
+	// -120 + 74x -15x^2+x^3
 	//[-120, 74, -15, 1]
 	for i := 1; i < len(polynomial) - 1; i++ {
 		polynomial[i] = multipleAllWithSize(len(keysWithoutkey) - i, permutations)
@@ -78,6 +101,45 @@ func computeDelta(key int, keys []int) []*big.Int {
 	return polynomial
 }
 
+
+
+func computeDelta(key int, keys []int) *big.Int {
+	var talker = big.NewInt(1)
+	for _, j := range keys {
+		if j == key {
+			continue
+		}
+		//talker *= key - j
+		talker.Mul(talker, new(big.Int).Sub(big.NewInt(int64(key)), big.NewInt(int64(j))))
+	}
+	//talker = talker % field.GetSize()
+	talker.Mod(talker, field.GetSize())
+	var inverseTalker = findInverse(talker, field.GetSize())
+	keyIndex := 0
+	for i := 0; i < len(keys); i++ {
+		if keys[i] == key {
+			keyIndex = i
+		}
+	}
+	keysWithoutkey := removeElementI(keys, keyIndex)
+
+	var polynomial = big.NewInt(1)
+
+	for _, number := range keysWithoutkey {
+		//polynomial[0] = polynomial[0] * -number
+		polynomial.Mul(polynomial, big.NewInt(int64(-number)))
+	}
+	polynomial.Mod(polynomial, field.GetSize())
+	r := polynomial.Cmp(big.NewInt(0))
+	if r < 0 {
+		//number = field.GetSize() + number
+		polynomial.Add(field.GetSize(), polynomial)
+	}
+	polynomial.Mul(polynomial, inverseTalker)
+	polynomial.Mod(polynomial, field.GetSize())
+	return polynomial
+}
+
 func multipleAllWithSize(k int, permutations [][]int) *big.Int {
 	result := big.NewInt(0)
 	for _, perm := range permutations {
@@ -101,6 +163,7 @@ func multipleAllWithSize(k int, permutations [][]int) *big.Int {
 
 func computePermutations(keys []int) [][]int {
 	var binarySize = int(math.Pow(2, float64(len(keys))) - 1)
+	fmt.Print("Binary size", binarySize)
 	//https://stackoverflow.com/questions/7150035/calculating-bits-required-to-store-decimal-number#:~:text=12%20Answers&text=Well%2C%20you%20just%20have%20to,%3D%201024%20(10%20bits).
 	//Udregn antal bits man skal have
 	need := int(math.Ceil(math.Log10(float64(binarySize)) / math.Log10(2)))
