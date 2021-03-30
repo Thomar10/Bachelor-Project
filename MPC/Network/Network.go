@@ -2,7 +2,7 @@ package Network
 
 import (
 	bundle "MPC/Bundle"
-	Prime_bundle "MPC/Bundle/Prime-bundle"
+	numberbundle "MPC/Bundle/Number-bundle"
 	"bufio"
 	"encoding/gob"
 	"fmt"
@@ -65,7 +65,7 @@ func Init(networkSize int) bool {
 
 	finalNetworkSize = networkSize
 
-	gob.Register(Prime_bundle.PrimeBundle{})
+	gob.Register(numberbundle.NumberBundle{})
 
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Ip and port of a peer on the network >")

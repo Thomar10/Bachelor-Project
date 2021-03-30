@@ -2,7 +2,7 @@ package Add
 
 import (
 	bundle "MPC/Bundle"
-	primebundle "MPC/Bundle/Prime-bundle"
+	primebundle "MPC/Bundle/Number-bundle"
 	network "MPC/Network"
 	secretsharing "MPC/Secret-Sharing"
 	"fmt"

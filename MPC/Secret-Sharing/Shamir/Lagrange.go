@@ -1,6 +1,8 @@
 package Shamir
 
 import (
+	finite "MPC/Finite-fields"
+	"MPC/Finite-fields/Binary"
 	"fmt"
 	"math"
 	"math/big"
@@ -9,7 +11,7 @@ import (
 )
 
 
-func ReconstructPolynomial(shares map[int]*big.Int) int {
+/*func ReconstructPolynomial(shares map[int]*big.Int) int {
 	keys := reflect.ValueOf(shares).MapKeys()
 	var keysArray []int
 	for _, k := range keys {
@@ -27,9 +29,9 @@ func ReconstructPolynomial(shares map[int]*big.Int) int {
 
 	return int(secret.Mod(secret, field.GetSize()).Int64())//secret % field.GetSize()
 
-}
+}*/
 
-func Reconstruct(shares map[int]*big.Int) int {
+func Reconstruct(shares map[int]finite.Number) finite.Number {
 	keys := reflect.ValueOf(shares).MapKeys()
 	var keysArray []int
 	for _, k := range keys {
@@ -37,19 +39,24 @@ func Reconstruct(shares map[int]*big.Int) int {
 	}
 	sort.Ints(keysArray)
 	//deltas := make([][]int, len(keysArray))
-	secret := big.NewInt(0)
+	fmt.Println("shares", shares)
+	var secret finite.Number
 	for _, key := range keysArray {
 		//secret += shares[key] * computeDelta(key, keysArray)[0]
-		iterRes := new(big.Int).Mul(shares[key], computeDelta(key, keysArray))
-		secret.Add(secret, iterRes)
+		var interRes = field.Mul(shares[key], computeDelta(key, keysArray))
+		secret = field.Add(interRes, secret)
+
+		//iterRes := new(big.Int).Mul(shares[key], computeDelta(key, keysArray))
+		//secret.Add(secret, iterRes)
+
 		//deltas[i] = computeDelta(key, keysArray)
 	}
-
-	return int(secret.Mod(secret, field.GetSize()).Int64())//secret % field.GetSize()
+	//int(secret.Mod(secret, field.GetSize()).Int64())//secret % field.GetSize()
+	return secret
 
 }
 
-func computeDeltaPolynomial(key int, keys []int) []*big.Int {
+/*func computeDeltaPolynomial(key int, keys []int) []*big.Int {
 	var talker = big.NewInt(1)
 	for _, j := range keys {
 		if j == key {
@@ -60,7 +67,7 @@ func computeDeltaPolynomial(key int, keys []int) []*big.Int {
 	}
 	//talker = talker % field.GetSize()
 	talker.Mod(talker, field.GetSize())
-	var inverseTalker = findInverse(talker, field.GetSize())
+	var inverseTalker = field.FindInverse(talker, field.GetSize())
 	keyIndex := 0
 	for i := 0; i < len(keys); i++ {
 		if keys[i] == key {
@@ -100,21 +107,26 @@ func computeDeltaPolynomial(key int, keys []int) []*big.Int {
 
 	return polynomial
 }
+*/
 
 
-
-func computeDelta(key int, keys []int) *big.Int {
-	var talker = big.NewInt(1)
+func computeDelta(key int, keys []int) finite.Number {
+	var talker = finite.Number{Prime: big.NewInt(1), Binary: []int{0, 0, 0, 0, 0, 0, 0, 1}} //rip
 	for _, j := range keys {
 		if j == key {
 			continue
 		}
 		//talker *= key - j
-		talker.Mul(talker, new(big.Int).Sub(big.NewInt(int64(key)), big.NewInt(int64(j))))
+		//talker.Mul(talker, new(big.Int).Sub(big.NewInt(int64(key)), big.NewInt(int64(j))))
+		keyNumberBinary := field.Add(finite.Number{Binary: Binary.ConvertXToByte(255)}, finite.Number{Binary: Binary.ConvertXToByte(key)})
+		var keyNumber = finite.Number{Prime: new(big.Int).Neg(big.NewInt(int64(key))), Binary: keyNumberBinary.Binary}
+		var jNumber = finite.Number{Prime: big.NewInt(int64(j)), Binary: Binary.ConvertXToByte(j)}
+		interRes := field.Add(keyNumber, jNumber)
+		talker = field.Mul(talker, interRes)
 	}
 	//talker = talker % field.GetSize()
-	talker.Mod(talker, field.GetSize())
-	var inverseTalker = findInverse(talker, field.GetSize())
+	//talker.Mod(talker, field.GetSize())
+	var inverseTalker = field.FindInverse(talker, field.GetSize())
 	keyIndex := 0
 	for i := 0; i < len(keys); i++ {
 		if keys[i] == key {
@@ -123,23 +135,33 @@ func computeDelta(key int, keys []int) *big.Int {
 	}
 	keysWithoutkey := removeElementI(keys, keyIndex)
 
-	var polynomial = big.NewInt(1)
+	var polynomial = finite.Number{Prime: big.NewInt(1), Binary: []int{0, 0, 0, 0, 0, 0, 0, 1}}
 
 	for _, number := range keysWithoutkey {
 		//polynomial[0] = polynomial[0] * -number
-		polynomial.Mul(polynomial, big.NewInt(int64(-number)))
+		//polynomial.Mul(polynomial, big.NewInt(int64(-number)))
+		var numberNumber = field.Add(
+			finite.Number{
+				Prime: field.GetSize().Prime,
+				Binary: Binary.ConvertXToByte(255)},
+			finite.Number{
+				Prime: big.NewInt(int64(-number)),
+				Binary: Binary.ConvertXToByte(number)})
+		//numberNumber.Prime = big.NewInt(int64(-number))
+		polynomial = field.Mul(polynomial, numberNumber)
 	}
-	polynomial.Mod(polynomial, field.GetSize())
-	r := polynomial.Cmp(big.NewInt(0))
+	//polynomial.Mod(polynomial, field.GetSize())
+	/*r := polynomial.Cmp(big.NewInt(0))
 	if r < 0 {
 		//number = field.GetSize() + number
 		polynomial.Add(field.GetSize(), polynomial)
-	}
-	polynomial.Mul(polynomial, inverseTalker)
-	polynomial.Mod(polynomial, field.GetSize())
+	}*/
+	//polynomial.Mul(polynomial, inverseTalker)
+	polynomial = field.Mul(polynomial, inverseTalker)
+	//polynomial.Mod(polynomial, field.GetSize())
 	return polynomial
 }
-
+/*
 func multipleAllWithSize(k int, permutations [][]int) *big.Int {
 	result := big.NewInt(0)
 	for _, perm := range permutations {
@@ -158,7 +180,7 @@ func multipleAllWithSize(k int, permutations [][]int) *big.Int {
 	}
 
 	return result
-}
+}*/
 
 
 func computePermutations(keys []int) [][]int {
@@ -226,17 +248,7 @@ func intToBinaryArray(number, arraySize int) []int {
 	return result
 }
 
-func findInverse(a, prime *big.Int) *big.Int {
-	r := a.Cmp(big.NewInt(0))
-	if r < 0 {
-		//a = prime + a
-		a.Add(prime, a)
-	}
-	result := big.NewInt(1)
-	result.Exp(a, new(big.Int).Sub(prime, big.NewInt(2)), prime)
-	return result
-	//return int(math.Pow(float64(a), float64(prime - 2))) % prime
-}
+
 
 //Itoh–Tsujii inversion algorithm
 /*

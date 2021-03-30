@@ -2,7 +2,7 @@ package Add_gate
 
 import (
 	bundle "MPC/Bundle"
-	primebundle "MPC/Bundle/Prime-bundle"
+	primebundle "MPC/Bundle/Number-bundle"
 	secretsharing "MPC/Secret-Sharing"
 	"fmt"
 )

@@ -2,7 +2,7 @@ package main
 
 import (
 	bundle "MPC/Bundle"
-	primebundle "MPC/Bundle/Prime-bundle"
+	numberbundle "MPC/Bundle/Number-bundle"
 	"MPC/Circuit"
 	finite "MPC/Finite-fields"
 	"MPC/Finite-fields/Binary"
@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"io/ioutil"
-	"math/big"
 	"os"
 	"strconv"
 )
@@ -27,10 +26,10 @@ type Receiver struct {
 func (r Receiver) Receive(bundle bundle.Bundle) {
 	fmt.Println("I have received bundle:", bundle)
 	switch match := bundle.(type) {
-		case primebundle.PrimeBundle:
+		case numberbundle.NumberBundle:
 			if match.Type == "Prime" {
 				myPartyNumber = network.GetPartyNumber()
-				createField(match.Prime)
+				createField(finite.Number{Prime: match.Prime})
 				sizeSet = true
 			} else {
 				panic("Given type is unknown: "+ match.Type)
@@ -51,7 +50,7 @@ func main() {
 	if os.Args[1] == "-p" {
 		finiteField = Prime.Prime{}
 		finiteField.InitSeed()
-		bundleType = primebundle.PrimeBundle{}
+		bundleType = numberbundle.NumberBundle{}
 	}else {
 		finiteField = Binary.Binary{}
 		//TODO Add binary bundle
@@ -76,11 +75,11 @@ func main() {
 	if isFirst {
 		finiteSize := finiteField.GenerateField()
 		switch bundleType.(type) {
-		case primebundle.PrimeBundle:
-			bundleType = primebundle.PrimeBundle{
+		case numberbundle.NumberBundle:
+			bundleType = numberbundle.NumberBundle{
 				ID: uuid.Must(uuid.NewRandom()).String(),
 				Type: "Prime",
-				Prime: finiteSize,
+				Prime: finiteSize.Prime,
 			}
 		default:
 			fmt.Println(":(")
@@ -109,11 +108,11 @@ func main() {
 
 	result := secretSharing.TheOneRing(circuit, secret)
 
-	fmt.Println("Final result:", result)
+	fmt.Println("Final result:", result.Prime)
 
 }
 
-func createField(fieldSize *big.Int) {
+func createField(fieldSize finite.Number) {
 	finiteField.SetSize(fieldSize)
 	secretSharing.SetField(finiteField)
 }
