@@ -9,8 +9,6 @@ import (
 Test fil til at teste go kode uden at køre hele programmet xd
 */
 
-
-
 func main() {
 
 

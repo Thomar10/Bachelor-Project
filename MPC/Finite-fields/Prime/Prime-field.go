@@ -12,7 +12,7 @@ import (
 type Prime struct {
 
 }
-var prime Finite_fields.Number
+var primeNumber Finite_fields.Number
 
 func (p Prime) ComputeShares(parties int, secret Finite_fields.Number) []Finite_fields.Number {
 	// t should be less than half of connected parties t < 1/2 n
@@ -24,7 +24,7 @@ func (p Prime) ComputeShares(parties int, secret Finite_fields.Number) []Finite_
 	polynomial[0] = secret.Prime
 	for i := 1; i < t + 1; i++ {
 		//TODO Måske gøre så vi kan få error ud og tjekke på (fuck go)
-		polynomial[i], _ = crand.Int(crand.Reader, prime.Prime)
+		polynomial[i], _ = crand.Int(crand.Reader, primeNumber.Prime)
 	}
 
 	var shares = make([]*big.Int, parties)
@@ -45,31 +45,31 @@ func (p Prime) InitSeed() {
 }
 
 func (p Prime) SetSize(f Finite_fields.Number) {
-	prime = f
+	fmt.Println("jeg bliver kaldt med ", f)
+	primeNumber = f
 }
 func (p Prime) GetSize() Finite_fields.Number {
-	return prime
+	return primeNumber
 }
 
 
 func (p Prime) GenerateField() Finite_fields.Number {
 	bigPrime, err := crand.Prime(crand.Reader, 32) //32 to because it should be big enough
 	if err != nil {
-		fmt.Println("Unable to compute prime", err.Error())
-		return Finite_fields.Number{Prime: big.NewInt(0)}
+		panic("Unable to compute prime")
 	}
 	return Finite_fields.Number{Prime: bigPrime}
 }
 
 func (p Prime) Add(n1, n2 Finite_fields.Number) Finite_fields.Number {
 	n1.Prime.Add(n1.Prime, n2.Prime)
-	n1.Prime.Mod(n1.Prime, prime.Prime)
+	n1.Prime.Mod(n1.Prime, primeNumber.Prime)
 	return n1
 }
 
 func (p Prime) Mul(n1, n2 Finite_fields.Number) Finite_fields.Number {
 	n1.Prime.Mul(n1.Prime, n2.Prime)
-	n1.Prime.Mod(n1.Prime, prime.Prime)
+	n1.Prime.Mod(n1.Prime, primeNumber.Prime)
 	return n1
 }
 
@@ -83,7 +83,7 @@ func calculatePolynomial(polynomial []*big.Int, x int) *big.Int {
 		result.Add(result, iterres)
 	}
 
-	return result.Mod(result, prime.Prime)//result % field.GetSize()
+	return result.Mod(result, primeNumber.Prime)//result % field.GetSize()
 }
 
 func (p Prime) FindInverse(a, prime Finite_fields.Number) Finite_fields.Number{

@@ -1,8 +1,8 @@
 package Add_gate
-
+/*
 import (
 	bundle "MPC/Bundle"
-	primebundle "MPC/Bundle/Number-bundle"
+	numberbundle "MPC/Bundle/Number-bundle"
 	secretsharing "MPC/Secret-Sharing"
 	"fmt"
 )
@@ -14,7 +14,7 @@ type Receiver struct {
 func (r Receiver) Receive(bundle bundle.Bundle) {
 	fmt.Println("I have received bundle:", bundle)
 	switch match := bundle.(type) {
-	case primebundle.PrimeBundle:
+	case numberbundle.NumberBundle:
 		if match.Type == "Share" {
 			receivedShares[match.From] = match.Shares
 			//receivedShares = append(receivedShares, match.Shares...)
@@ -40,4 +40,4 @@ func Add(input1, input2 int, sSharing secretsharing.Secret_Sharing) int {
 
 	return input1 + input2
 
-}
+}*/

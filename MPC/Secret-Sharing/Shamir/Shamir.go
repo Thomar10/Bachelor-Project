@@ -70,7 +70,7 @@ func (s Shamir) ComputeShares(parties int, secret finite.Number) []finite.Number
 }
 
 
-func (s Shamir) ComputeResult(ints []*big.Int) int {
+func (s Shamir) ComputeResult(ints []finite.Number) finite.Number {
 	panic("implement meeeeeeeeeeeeeeeeeeeeee!")
 	//return Reconstruct(shares)
 }
@@ -239,7 +239,7 @@ func removeGate(circuit Circuit.Circuit, gate Circuit.Gate, i int) []Circuit.Gat
 	return b
 }
 
-func (s Shamir) ComputeFunction(shares map[int][]*big.Int, party int) []*big.Int {
+func (s Shamir) ComputeFunction(shares map[int][]finite.Number, party int) []finite.Number {
 	//Reconstruct(shares)
 	if function == "add" {
 

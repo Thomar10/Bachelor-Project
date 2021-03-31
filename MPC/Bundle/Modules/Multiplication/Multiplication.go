@@ -2,7 +2,8 @@ package Multiplication
 
 import (
 	bundle "MPC/Bundle"
-	primebundle "MPC/Bundle/Number-bundle"
+	numberbundle "MPC/Bundle/Number-bundle"
+	Finite_fields "MPC/Finite-fields"
 	network "MPC/Network"
 	secretsharing "MPC/Secret-Sharing"
 	"fmt"
@@ -17,7 +18,7 @@ type Receiver struct {
 func (r Receiver) Receive(bundle bundle.Bundle) {
 	//fmt.Println("I have received bundle:", bundle)
 	switch match := bundle.(type) {
-	case primebundle.PrimeBundle:
+	case numberbundle.NumberBundle:
 		if match.Type == "Share" {
 			receivedShares[match.From] = match.Shares
 			//receivedShares = append(receivedShares, match.Shares...)
@@ -35,11 +36,11 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 var secretSharing secretsharing.Secret_Sharing
 var partySize int
 
-var shares []*big.Int
-var receivedShares =  make(map[int][]*big.Int)
-var receivedResults []*big.Int
+var shares []Finite_fields.Number
+var receivedShares =  make(map[int][]Finite_fields.Number)
+var receivedResults []Finite_fields.Number
 
-func Multiply(secret *big.Int, sSharing secretsharing.Secret_Sharing, pSize int) *big.Int {
+func Multiply(secret Finite_fields.Number, sSharing secretsharing.Secret_Sharing, pSize int) Finite_fields.Number {
 	partySize = pSize
 	secretSharing = sSharing
 
@@ -47,7 +48,7 @@ func Multiply(secret *big.Int, sSharing secretsharing.Secret_Sharing, pSize int)
 
 	network.RegisterReceiver(receiver)
 
-	r := secret.Cmp(big.NewInt(-1))
+	r := secret.Prime.Cmp(big.NewInt(-1))
 	if r != 0 {
 		shares = secretSharing.ComputeShares(partySize, secret)
 		fmt.Println("My shares are:", shares)
@@ -67,12 +68,12 @@ func Multiply(secret *big.Int, sSharing secretsharing.Secret_Sharing, pSize int)
 
 func distributeShares() {
 	for party := 1; party <= partySize; party++ {
-		shareCopy := make([]*big.Int, len(shares))
+		shareCopy := make([]Finite_fields.Number, len(shares))
 		copy(shareCopy, shares)
 		shareSlice := shareCopy[:party - 1]
 		shareSlice2 := shareCopy[party:]
 		shareSlice = append(shareSlice, shareSlice2...)
-		shareBundle := primebundle.PrimeBundle{
+		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
 			Type:   "Share",
 			Shares: shareSlice,
@@ -89,11 +90,11 @@ func distributeShares() {
 	}
 }
 
-func distributeResult(result []*big.Int) {
+func distributeResult(result []Finite_fields.Number) {
 	counter := 0
 	for party := 1; party <= partySize; party++ {
 		if network.GetPartyNumber() != party {
-			shareBundle := primebundle.PrimeBundle{
+			shareBundle := numberbundle.NumberBundle{
 				ID: uuid.Must(uuid.NewRandom()).String(),
 				Type: "Result",
 				Result: result[counter],

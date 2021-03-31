@@ -40,8 +40,11 @@ func Reconstruct(shares map[int]finite.Number) finite.Number {
 	sort.Ints(keysArray)
 	//deltas := make([][]int, len(keysArray))
 	fmt.Println("shares", shares)
-	var secret finite.Number
+	fmt.Println(keysArray)
+	var secret = finite.Number{Prime: big.NewInt(0), Binary: []int{0, 0, 0, 0, 0, 0, 0, 0}}
 	for _, key := range keysArray {
+		fmt.Println("shares[key]", shares[key])
+		fmt.Println("delta", computeDelta(key, keysArray))
 		//secret += shares[key] * computeDelta(key, keysArray)[0]
 		var interRes = field.Mul(shares[key], computeDelta(key, keysArray))
 		secret = field.Add(interRes, secret)
@@ -118,9 +121,19 @@ func computeDelta(key int, keys []int) finite.Number {
 		}
 		//talker *= key - j
 		//talker.Mul(talker, new(big.Int).Sub(big.NewInt(int64(key)), big.NewInt(int64(j))))
-		keyNumberBinary := field.Add(finite.Number{Binary: Binary.ConvertXToByte(255)}, finite.Number{Binary: Binary.ConvertXToByte(key)})
-		var keyNumber = finite.Number{Prime: new(big.Int).Neg(big.NewInt(int64(key))), Binary: keyNumberBinary.Binary}
+
+		keyNumberBinary := field.Add(
+			finite.Number{
+				Prime: new(big.Int).Neg(big.NewInt(int64(key))),
+				Binary: Binary.ConvertXToByte(255)},
+			finite.Number{
+				Prime: field.GetSize().Prime,
+				Binary: Binary.ConvertXToByte(key)})
+
+		var keyNumber = finite.Number{Prime: keyNumberBinary.Prime, Binary: keyNumberBinary.Binary}
+
 		var jNumber = finite.Number{Prime: big.NewInt(int64(j)), Binary: Binary.ConvertXToByte(j)}
+
 		interRes := field.Add(keyNumber, jNumber)
 		talker = field.Mul(talker, interRes)
 	}
@@ -142,12 +155,13 @@ func computeDelta(key int, keys []int) finite.Number {
 		//polynomial.Mul(polynomial, big.NewInt(int64(-number)))
 		var numberNumber = field.Add(
 			finite.Number{
-				Prime: field.GetSize().Prime,
+				Prime: big.NewInt(int64(-number)),
 				Binary: Binary.ConvertXToByte(255)},
 			finite.Number{
-				Prime: big.NewInt(int64(-number)),
+				Prime: field.GetSize().Prime,
 				Binary: Binary.ConvertXToByte(number)})
 		//numberNumber.Prime = big.NewInt(int64(-number))
+
 		polynomial = field.Mul(polynomial, numberNumber)
 	}
 	//polynomial.Mod(polynomial, field.GetSize())

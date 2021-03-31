@@ -2,12 +2,12 @@ package Add
 
 import (
 	bundle "MPC/Bundle"
-	primebundle "MPC/Bundle/Number-bundle"
+	numberbundle "MPC/Bundle/Number-bundle"
+	finite "MPC/Finite-fields"
 	network "MPC/Network"
 	secretsharing "MPC/Secret-Sharing"
 	"fmt"
 	"github.com/google/uuid"
-	"math/big"
 )
 
 type Receiver struct {
@@ -17,12 +17,13 @@ type Receiver struct {
 func (r Receiver) Receive(bundle bundle.Bundle) {
 	fmt.Println("I have received bundle:", bundle)
 	switch match := bundle.(type) {
-	case primebundle.PrimeBundle:
+	case numberbundle.NumberBundle:
 		if match.Type == "Share" {
 			receivedShares[match.From] = match.Shares
 			//receivedShares = append(receivedShares, match.Shares...)
 			//fmt.Println(receivedShares)
 		} else if match.Type == "Result" {
+			fmt.Println("receivedResults", receivedResults)
 			if len(receivedResults) != partySize {
 				receivedResults = append(receivedResults, match.Result)
 			}
@@ -35,11 +36,11 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 var secretSharing secretsharing.Secret_Sharing
 var partySize int
 
-var shares []*big.Int
-var receivedShares =  make(map[int][]*big.Int)
-var receivedResults []*big.Int
+var shares []finite.Number
+var receivedShares =  make(map[int][]finite.Number)
+var receivedResults []finite.Number
 
-func Add(secret *big.Int, sSharing secretsharing.Secret_Sharing, pSize int) int {
+func Add(secret finite.Number, sSharing secretsharing.Secret_Sharing, pSize int) finite.Number {
 	partySize = pSize
 	secretSharing = sSharing
 
@@ -57,6 +58,7 @@ func Add(secret *big.Int, sSharing secretsharing.Secret_Sharing, pSize int) int 
 			//Udregn function
 			//TODO fjern hardcoding
 			funcResult := secretSharing.ComputeFunction(receivedShares, network.GetPartyNumber())
+			fmt.Println("funcResult", funcResult)
 			distributeResult(funcResult)
 			break
 		}
@@ -75,12 +77,12 @@ func Add(secret *big.Int, sSharing secretsharing.Secret_Sharing, pSize int) int 
 
 func distributeShares() {
 	for party := 1; party <= partySize; party++ {
-		shareCopy := make([]*big.Int, len(shares))
+		shareCopy := make([]finite.Number, len(shares))
 		copy(shareCopy, shares)
 		shareSlice := shareCopy[:party - 1]
 		shareSlice2 := shareCopy[party:]
 		shareSlice = append(shareSlice, shareSlice2...)
-		shareBundle := primebundle.PrimeBundle{
+		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
 			Type:   "Share",
 			Shares: shareSlice,
@@ -97,14 +99,14 @@ func distributeShares() {
 	}
 }
 
-func distributeResult(result []*big.Int) {
+func distributeResult(result []finite.Number) {
 	counter := 0
 	for party := 1; party <= partySize; party++ {
 		if network.GetPartyNumber() != party {
-			shareBundle := primebundle.PrimeBundle{
+			shareBundle := numberbundle.NumberBundle{
 				ID: uuid.Must(uuid.NewRandom()).String(),
 				Type: "Result",
-				Result: result[counter],
+				Result:  result[counter],
 			}
 			counter++
 			network.Send(shareBundle, party)
