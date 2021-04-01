@@ -163,7 +163,9 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number) finite
 						}
 					}*/
 				case "Multiply-Constant":
-					//TODO IMPLEMENT
+					constantString := gate.Input_constant
+					constant := field.GetConstant(constantString)
+					output = field.Mul(input1, constant)
 				}
 				wiresMutex.Lock()
 				wires[gate.GateNumber] = output

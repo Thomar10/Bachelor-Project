@@ -10,6 +10,11 @@ type Binary struct {
 
 }
 
+func (b Binary) GetConstant(constant int) finite.Number {
+	constantByte := ConvertXToByte(constant)
+	return finite.Number{Binary: constantByte}
+}
+
 var field finite.Number
 
 func (b Binary) InitSeed() {

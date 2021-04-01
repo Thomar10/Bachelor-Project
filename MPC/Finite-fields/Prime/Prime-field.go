@@ -10,6 +10,11 @@ import (
 type Prime struct {
 
 }
+
+func (p Prime) GetConstant(constant int) Finite_fields.Number {
+	return Finite_fields.Number{Prime: big.NewInt(int64(constant))}
+}
+
 var primeNumber Finite_fields.Number
 
 func (p Prime) ComputeShares(parties int, secret Finite_fields.Number) []Finite_fields.Number {

@@ -8,9 +8,9 @@
     },
     {
       "GateNumber": 5,
-      "Input_one": 3,
-      "Input_two": 4,
-      "Operation": "Addition"
+      "Input_one": 4,
+      "Input_constant": 4,
+      "Operation": "Multiply-Constant"
     },
     {
       "GateNumber": 6,
