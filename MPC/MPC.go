@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"strconv"
 )
@@ -29,7 +30,7 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 		case numberbundle.NumberBundle:
 			if match.Type == "Prime" {
 				myPartyNumber = network.GetPartyNumber()
-				createField(finite.Number{Prime: match.Prime})
+				createField(finite.Number{Prime: match.Prime.Prime})
 				sizeSet = true
 			} else {
 				panic("Given type is unknown: "+ match.Type)
@@ -41,7 +42,7 @@ var finiteField finite.Finite
 var bundleType bundle.Bundle
 var secretSharing secretsharing.Secret_Sharing
 var partySize int
-var secret int
+var secret finite.Number
 var sizeSet bool
 var myPartyNumber int
 var circuit Circuit.Circuit
@@ -49,24 +50,32 @@ var circuit Circuit.Circuit
 func main() {
 	if os.Args[1] == "-p" {
 		finiteField = Prime.Prime{}
-		finiteField.InitSeed()
-		bundleType = numberbundle.NumberBundle{}
+		sec, _ := strconv.Atoi(os.Args[4])
+		secret = finite.Number{Prime: big.NewInt(int64(sec))}
 	}else {
 		finiteField = Binary.Binary{}
-		//TODO Add binary bundle
+		sec :=  os.Args[4]
+		secByte := make([]int, len(sec))
+		for i, r := range sec {
+			secByte[i], _ = strconv.Atoi(string(r))
+		}
+		secret = finite.Number{Binary: secByte}
 	}
+	finiteField.InitSeed()
+	bundleType = numberbundle.NumberBundle{}
 	if os.Args[2] == "-s" {
 		secretSharing = Simple_Sharing.Simple_Sharing{}
 		loadCircuit("SimpleCircuit.json")
 	}else if os.Args[2] == "-sss" {
 		secretSharing = Shamir.Shamir{}
 		loadCircuit("Circuit.json")
+		//loadCircuit("2BitAdder.json")
+		fmt.Println("Circuit", circuit)
 	} else {
 		panic("No secret sharing given")
 	}
 	partySize, _ = strconv.Atoi(os.Args[3])
 
-	secret, _ = strconv.Atoi(os.Args[4])
 
 
 	receiver := Receiver{}
@@ -79,7 +88,7 @@ func main() {
 			bundleType = numberbundle.NumberBundle{
 				ID: uuid.Must(uuid.NewRandom()).String(),
 				Type: "Prime",
-				Prime: finiteSize.Prime,
+				Prime: finiteSize,
 			}
 		default:
 			fmt.Println(":(")
@@ -100,6 +109,8 @@ func main() {
 		sizeSet = true
 	}
 
+
+
 	for {
 		if sizeSet {
 			break
@@ -107,8 +118,13 @@ func main() {
 	}
 
 	result := secretSharing.TheOneRing(circuit, secret)
+	switch finiteField.(type) {
+		case Prime.Prime:
+			fmt.Println("Final result:", result.Prime)
+		case Binary.Binary:
+			fmt.Println("Final result:", result.Binary)
+	}
 
-	fmt.Println("Final result:", result.Prime)
 
 }
 
