@@ -32,6 +32,7 @@ import (
 }*/
 
 func Reconstruct(shares map[int]finite.Number) finite.Number {
+
 	fmt.Println("Got following share map", shares)
 	keys := reflect.ValueOf(shares).MapKeys()
 	var keysArray []int
@@ -46,8 +47,8 @@ func Reconstruct(shares map[int]finite.Number) finite.Number {
 		//secret += shares[key] * computeDelta(key, keysArray)[0]
 		delta := computeDelta(key, keysArray)
 		share := shares[key]
-		fmt.Println(delta)
-		fmt.Println(share)
+		fmt.Println("Delta",delta)
+		fmt.Println("Share", share)
 		var interRes = field.Mul(share, delta)
 		fmt.Println("interRes", interRes)
 
@@ -128,14 +129,14 @@ func computeDelta(key int, keys []int) finite.Number {
 		keyNumberBinary := field.Add(
 			finite.Number{
 				Prime: new(big.Int).Neg(big.NewInt(int64(j))),
-				Binary: Binary.ConvertXToByte(255)},
+				Binary: Binary.ConvertXToByte(0)},
 			finite.Number{
 				Prime: field.GetSize().Prime,
-				Binary: Binary.ConvertXToByte(key)})
+				Binary: Binary.ConvertXToByte(j)})
 
 		var keyNumber = finite.Number{Prime: keyNumberBinary.Prime, Binary: keyNumberBinary.Binary}
 
-		var jNumber = finite.Number{Prime: big.NewInt(int64(key)), Binary: Binary.ConvertXToByte(j)}
+		var jNumber = finite.Number{Prime: big.NewInt(int64(key)), Binary: Binary.ConvertXToByte(key)}
 
 		interRes := field.Add(keyNumber, jNumber)
 		talker = field.Mul(talker, interRes)
@@ -143,6 +144,7 @@ func computeDelta(key int, keys []int) finite.Number {
 	//talker = talker % field.GetSize()
 	//talker.Mod(talker, field.GetSize())
 	var inverseTalker = field.FindInverse(talker, field.GetSize())
+	fmt.Println("Is it truly inverse?", field.Mul(inverseTalker, talker))
 	keyIndex := 0
 	for i := 0; i < len(keys); i++ {
 		if keys[i] == key {
@@ -152,14 +154,14 @@ func computeDelta(key int, keys []int) finite.Number {
 	keysWithoutkey := removeElementI(keys, keyIndex)
 
 	var polynomial = finite.Number{Prime: big.NewInt(1), Binary: []int{0, 0, 0, 0, 0, 0, 0, 1}}
-
+	fmt.Println("numbers", keysWithoutkey)
 	for _, number := range keysWithoutkey {
 		//polynomial[0] = polynomial[0] * -number
 		//polynomial.Mul(polynomial, big.NewInt(int64(-number)))
 		var numberNumber = field.Add(
 			finite.Number{
 				Prime: big.NewInt(int64(-number)),
-				Binary: Binary.ConvertXToByte(255)},
+				Binary: Binary.ConvertXToByte(0)},
 			finite.Number{
 				Prime: field.GetSize().Prime,
 				Binary: Binary.ConvertXToByte(number)})
@@ -167,6 +169,7 @@ func computeDelta(key int, keys []int) finite.Number {
 
 		polynomial = field.Mul(polynomial, numberNumber)
 	}
+	fmt.Println("Tælleren for delta", key , polynomial)
 	//polynomial.Mod(polynomial, field.GetSize())
 	/*r := polynomial.Cmp(big.NewInt(0))
 	if r < 0 {

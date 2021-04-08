@@ -1,8 +1,13 @@
 package main
 
 import (
+	finite "MPC/Finite-fields"
+	"MPC/Finite-fields/Binary"
+	"MPC/Finite-fields/Prime"
+	"MPC/Secret-Sharing/Shamir"
 	"fmt"
 	"math"
+	"math/big"
 )
 
 /*
@@ -11,9 +16,60 @@ Test fil til at teste go kode uden at køre hele programmet xd
 
 func main() {
 
-	a := []int{0, 0, 0, 1, 1, 0, 1, 1}
-	b := []int{0, 0, 0, 0, 0, 1, 0, 1}
-	fmt.Println(bitMult(a, b))
+	q := []int{0, 1, 1, 1, 1, 1, 0, 1}
+
+
+
+
+	b := []int{0, 0, 0, 0, 0, 0, 1, 1}
+
+
+
+	finiteFielfd := Binary.Binary{}
+	secretSharingg := Shamir.Shamir{}
+
+	finiteFielfd.SetSize(finite.Number{Binary: b, Prime: big.NewInt(0)})
+	secretSharingg.SetField(finiteFielfd)
+
+	fmt.Println("FUCK MI", Binary.BitExponent(q, 0))
+	qInv := finiteFielfd.Add(finite.Number{Binary: Binary.ConvertXToByte(0)}, finite.Number{Binary: q})
+	fmt.Println("Is qInv the inverse of q", finiteFielfd.Add(finite.Number{Binary: q}, qInv))
+	//init seed
+	//finiteFielfd.InitSeed()
+	shares := finiteFielfd.ComputeShares(3, finite.Number{Binary: b})
+	mapp := make(map[int]finite.Number)
+	for i := 2; i < 4; i++ {
+		mapp[i] = shares[i - 1]
+	}
+	fmt.Println("Result", Shamir.Reconstruct(mapp))
+	//hmm := finite.Number{Binary: convertXToByte(1)}
+	//fmt.Println("Er det 3?", hmm)
+	//negOne := finiteFielfd.Add(finite.Number{Binary: convertXToByte(1)}, finite.Number{Binary: convertXToByte(255)})
+	//negTwo := finiteFielfd.Add(finite.Number{Binary: convertXToByte(2)}, finite.Number{Binary: convertXToByte(255)})
+	//fmt.Println("Tællllleren", finiteFielfd.Mul(hmm, negTwo))
+
+	fmt.Println("")
+	fmt.Println("")
+	fmt.Println("Tester prime")
+	a := big.NewInt(9)
+	finiteFieldd := Prime.Prime{}
+	secretSharinggg := Shamir.Shamir{}
+	secretSharinggg.SetField(finiteFieldd)
+	finiteFieldd.SetSize(finite.Number{Binary: b, Prime: big.NewInt(89)})
+	primeShares := finiteFieldd.ComputeShares(3, finite.Number{Prime: a})
+	mappp := make(map[int]finite.Number)
+	for i := 2; i < 4; i++ {
+		mappp[i] = primeShares[ i - 1]
+	}
+	fmt.Println("Result for prime", Shamir.Reconstruct(mappp))
+
+
+
+
+
+
+
+
 	//fmt.Println(bitMult(convertXToByte(1), convertXToByte(1)))
 	//a := []int{0, 1, 0, 1, 0, 0, 1, 1}
 	//b := []int{1, 1, 0, 0, 1, 0, 1, 0}
