@@ -1,0 +1,196 @@
+{
+  "Gate": [
+    {
+      "GateNumber": 7,
+      "Input_one": 1,
+      "Input_two": 3,
+      "Operation": "Multiplication"
+    },
+    {
+      "GateNumber": 8,
+      "Input_one": 1,
+      "Input_two": 3,
+      "Operation": "Addition"
+    },
+    {
+      "GateNumber": 9,
+      "Input_one": 2,
+      "Input_two": 4,
+      "Operation": "Multiplication"
+    },
+    {
+      "GateNumber": 10,
+      "Input_one": 2,
+      "Input_two": 4,
+      "Operation": "Addition"
+    },
+    {
+      "GateNumber": 11,
+      "Input_one": 8,
+      "Input_two": 9,
+      "Operation": "Multiplication"
+    },
+    {
+      "GateNumber": 12,
+      "Input_one": 8,
+      "Input_two": 9,
+      "Operation": "Addition"
+    },
+    {
+      "GateNumber": 13,
+      "Input_one": 7,
+      "Input_two": 11,
+      "Operation": "Addition"
+    },
+    {
+      "GateNumber": 14,
+      "Input_one": 7,
+      "Input_two": 11,
+      "Operation": "Multiplication"
+    },
+    {
+      "GateNumber": 15,
+      "Input_one": 10,
+      "Input_two": 6,
+      "Operation": "Multiplication"
+    },
+    {
+      "GateNumber": 16,
+      "Input_one": 10,
+      "Input_two": 6,
+      "Operation": "Addition"
+    },
+    {
+      "GateNumber": 17,
+      "Input_one": 12,
+      "Input_two": 5,
+      "Operation": "Addition"
+    },
+    {
+      "GateNumber": 18,
+      "Input_one": 13,
+      "Input_two": 14,
+      "Operation": "Addition"
+    },
+    {
+      "GateNumber": 19,
+      "Input_one": 12,
+      "Input_two": 5,
+      "Operation": "Multiplication"
+    },
+    {
+      "GateNumber": 20,
+      "Input_one": 17,
+      "Input_two": 15,
+      "Operation": "Multiplication"
+    },
+    {
+      "GateNumber": 21,
+      "Input_one": 17,
+      "Input_two": 15,
+      "Operation": "Addition"
+    },
+    {
+      "GateNumber": 22,
+      "Input_one": 19,
+      "Input_two": 20,
+      "Operation": "Addition"
+    },
+    {
+      "GateNumber": 23,
+      "Input_one": 19,
+      "Input_two": 20,
+      "Operation": "Multiplication"
+    },
+    {
+      "GateNumber": 24,
+      "Input_one": 22,
+      "Input_two": 23,
+      "Operation": "Addition"
+    },
+    {
+      "GateNumber": 25,
+      "Input_one": 18,
+      "Input_two": 24,
+      "Operation": "Multiplication"
+    },
+    {
+      "GateNumber": 26,
+      "Input_one": 18,
+      "Input_two": 24,
+      "Operation": "Addition"
+    },
+    {
+      "GateNumber": 27,
+      "Input_one": 25,
+      "Output": 1,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 28,
+      "Input_one": 26,
+      "Output": 1,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 29,
+      "Input_one": 21,
+      "Output": 1,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 30,
+      "Input_one": 16,
+      "Output": 1,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 31,
+      "Input_one": 25,
+      "Output": 2,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 32,
+      "Input_one": 26,
+      "Output": 2,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 33,
+      "Input_one": 21,
+      "Output": 2,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 34,
+      "Input_one": 16,
+      "Output": 2,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 35,
+      "Input_one": 25,
+      "Output": 3,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 36,
+      "Input_one": 26,
+      "Output": 3,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 37,
+      "Input_one": 21,
+      "Output": 3,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 38,
+      "Input_one": 16,
+      "Output": 3,
+      "Operation": "Output"
+    }
+  ]
+}
