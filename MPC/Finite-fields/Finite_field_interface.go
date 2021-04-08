@@ -11,6 +11,7 @@ type Finite interface {
 	Mul(n1, n2 Number) Number
 	ComputeShares(parties int, secret Number) []Number
 	FindInverse(a, prime Number) Number
+	GetConstant(constantString int) Number
 }
 type Number struct {
 	Prime *big.Int

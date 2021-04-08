@@ -5,13 +5,16 @@ import (
 	crand "crypto/rand"
 	"fmt"
 	"math/big"
-	"math/rand"
-	"time"
 )
 
 type Prime struct {
 
 }
+
+func (p Prime) GetConstant(constant int) Finite_fields.Number {
+	return Finite_fields.Number{Prime: big.NewInt(int64(constant))}
+}
+
 var primeNumber Finite_fields.Number
 
 func (p Prime) ComputeShares(parties int, secret Finite_fields.Number) []Finite_fields.Number {
@@ -41,7 +44,6 @@ func (p Prime) ComputeShares(parties int, secret Finite_fields.Number) []Finite_
 
 func (p Prime) InitSeed() {
 	//TODO find bedre plads senere eventuelt til rand seed
-	rand.Seed(time.Now().UnixNano())
 }
 
 func (p Prime) SetSize(f Finite_fields.Number) {
@@ -62,15 +64,15 @@ func (p Prime) GenerateField() Finite_fields.Number {
 }
 
 func (p Prime) Add(n1, n2 Finite_fields.Number) Finite_fields.Number {
-	n1.Prime.Add(n1.Prime, n2.Prime)
-	n1.Prime.Mod(n1.Prime, primeNumber.Prime)
-	return n1
+	x := new(big.Int).Add(n1.Prime, n2.Prime)
+	x.Mod(x, primeNumber.Prime)
+	return Finite_fields.Number{Prime: x}
 }
 
 func (p Prime) Mul(n1, n2 Finite_fields.Number) Finite_fields.Number {
-	n1.Prime.Mul(n1.Prime, n2.Prime)
-	n1.Prime.Mod(n1.Prime, primeNumber.Prime)
-	return n1
+	x := new(big.Int).Mul(n1.Prime, n2.Prime)
+	x.Mod(x, primeNumber.Prime)
+	return Finite_fields.Number{Prime: x}
 }
 
 func calculatePolynomial(polynomial []*big.Int, x int) *big.Int {

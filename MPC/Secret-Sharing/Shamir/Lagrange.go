@@ -39,12 +39,9 @@ func Reconstruct(shares map[int]finite.Number) finite.Number {
 	}
 	sort.Ints(keysArray)
 	//deltas := make([][]int, len(keysArray))
-	fmt.Println("shares", shares)
 	fmt.Println(keysArray)
 	var secret = finite.Number{Prime: big.NewInt(0), Binary: []int{0, 0, 0, 0, 0, 0, 0, 0}}
 	for _, key := range keysArray {
-		fmt.Println("shares[key]", shares[key])
-		fmt.Println("delta", computeDelta(key, keysArray))
 		//secret += shares[key] * computeDelta(key, keysArray)[0]
 		var interRes = field.Mul(shares[key], computeDelta(key, keysArray))
 		secret = field.Add(interRes, secret)

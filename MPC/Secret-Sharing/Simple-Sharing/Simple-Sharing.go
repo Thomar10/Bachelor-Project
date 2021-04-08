@@ -9,10 +9,8 @@ import (
 	crand "crypto/rand"
 	"fmt"
 	"math/big"
-	"math/rand"
 	"reflect"
 	"sort"
-	"time"
 )
 
 var field finite.Finite
@@ -105,7 +103,7 @@ func (s Simple_Sharing) SetFunction(f string) {
 	function = f
 }
 
-func (s Simple_Sharing) TheOneRing(circuit Circuit.Circuit, secret int) finite.Number {
+func (s Simple_Sharing) TheOneRing(circuit Circuit.Circuit, secret finite.Number) finite.Number {
 		var result = finite.Number{Prime: big.NewInt(0)}
 
 		partyNumber := network.GetPartyNumber()
@@ -115,14 +113,14 @@ func (s Simple_Sharing) TheOneRing(circuit Circuit.Circuit, secret int) finite.N
 		switch gate.Operation {
 			case "Addition":
 				function = "Addition"
-				result = Add.Add(finite.Number{Prime: big.NewInt(int64(secret))}, s, partySize)
+				result = Add.Add(secret, s, partySize)
 			case "Multiplication":
 				if partyNumber != gate.Input_one && partyNumber != gate.Input_two {
 					//This party should not participate
-					secret = -1
+					secret = finite.Number{Prime: big.NewInt(int64(-1))}
 				}
 				function = "Multiplication"
-				multiplyResult := Multiplication.Multiply(finite.Number{Prime: big.NewInt(int64(secret))}, s, partySize)
+				multiplyResult := Multiplication.Multiply(secret, s, partySize)
 				function = "Addition"
 				result = Add.Add(multiplyResult, s, partySize)
 			default:
@@ -133,7 +131,6 @@ func (s Simple_Sharing) TheOneRing(circuit Circuit.Circuit, secret int) finite.N
 }
 
 func (s Simple_Sharing) ComputeShares(parties int, secret finite.Number) []finite.Number {
-		rand.Seed(time.Now().UnixNano())
 		var prime = field.GetSize()
 		var shares []*big.Int
 		lastShare := secret.Prime

@@ -11,10 +11,9 @@ import (
 	_ "crypto/rand"
 	"fmt"
 	"github.com/google/uuid"
-	"math/big"
-	"math/rand"
+	"reflect"
+	"sort"
 	"sync"
-	"time"
 )
 
 type Shamir struct {
@@ -27,12 +26,12 @@ type Receiver struct {
 
 
 func (r Receiver) Receive(bundle bundle.Bundle) {
-	fmt.Println("I have received bundle:", bundle)
+	//fmt.Println("I have received bundle:", bundle)
 	switch match := bundle.(type) {
 	case numberbundle.NumberBundle:
 		if match.Type == "Share"{
 			wiresMutex.Lock()
-			wires[match.From] = match.Shares[0]
+			wires[match.Gate] = match.Shares[0]
 			wiresMutex.Unlock()
 		} else if match.Type == "MultShare" {
 			gateMutex.Lock()
@@ -43,10 +42,16 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			multMap[match.From] = match.Shares[0]
 			gateMult[match.Gate] = multMap
 			gateMutex.Unlock()
-			fmt.Println("Gate map after getting a share", gateMult)
-			fmt.Println("The ")
 		} else if match.Type == "Result" {
+			resultMutex.Lock()
+			receivedResults = resultGate[match.Gate]
+			if receivedResults == nil {
+				receivedResults = make(map[int]finite.Number)
+			}
 			receivedResults[match.From] = match.Result
+			resultGate[match.Gate] = receivedResults
+			resultMutex.Unlock()
+			//receivedResults[match.From] = match.Result
 		} else {
 			panic("Given type is unknown")
 		}
@@ -59,6 +64,8 @@ var multMap = make(map[int]finite.Number)
 var gateMult = make(map[int]map[int]finite.Number)
 var wiresMutex = &sync.Mutex{}
 var gateMutex = &sync.Mutex{}
+var resultMutex = &sync.Mutex{}
+var resultGate = make(map[int]map[int]finite.Number)
 var receivedResults = make(map[int]finite.Number)
 
 func (s Shamir) SetFunction(f string) {
@@ -70,7 +77,7 @@ func (s Shamir) ComputeShares(parties int, secret finite.Number) []finite.Number
 }
 
 
-func (s Shamir) ComputeResult(ints []finite.Number) finite.Number {
+func (s Shamir) ComputeResult(results []finite.Number) finite.Number {
 	panic("implement meeeeeeeeeeeeeeeeeeeeee!")
 	//return Reconstruct(shares)
 }
@@ -78,31 +85,36 @@ func (s Shamir) ComputeResult(ints []finite.Number) finite.Number {
 var field finite.Finite
 
 func (s Shamir) SetField(f finite.Finite) {
-	rand.Seed(time.Now().UnixNano())
 	field = f
 }
 
-func (s Shamir) TheOneRing(circuit Circuit.Circuit, sec int) finite.Number {
-	var secret finite.Number
+func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number) finite.Number {
+
 	partySize := network.GetParties()
 
 	receiver := Receiver{}
 
 	network.RegisterReceiver(receiver)
-	switch field.(type) {
-	case Prime.Prime:
-		secret = finite.Number{Prime: big.NewInt(int64(sec))}
-	case Binary.Binary:
-		secretBinary := make([]int, 8)
-		secretBinary[7] = sec
-		secret = finite.Number{Binary: secretBinary}
-	}
+
 
 	var result finite.Number
+	switch field.(type) {
+		case Binary.Binary:
+			fmt.Println("Im party", network.GetPartyNumber())
+			//Udregn shares
+			for i, sec := range secret.Binary {
+				binarySec := make([]int, 8)
+				binarySec[7] = sec
+				share := s.ComputeShares(partySize, finite.Number{Binary: binarySec})
+				distributeShares(share, partySize, network.GetPartyNumber() * len(secret.Binary) + i - len(secret.Binary) + 1)
+			}
+		case Prime.Prime:
+			shares := s.ComputeShares(partySize, secret)
+			distributeShares(shares, partySize, network.GetPartyNumber())
+	}
+	//shares := s.ComputeShares(partySize, secret)
 
-	shares := s.ComputeShares(partySize, secret)
-	fmt.Println("Shares to the problem", shares)
-	distributeShares(shares, partySize)
+
 
 	for {
 		for i, gate := range circuit.Gates {
@@ -110,7 +122,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, sec int) finite.Number {
 			input1, found1 := wires[gate.Input_one]
 			input2, found2 := wires[gate.Input_two]
 			wiresMutex.Unlock()
-			if found1 && found2 {
+			if found1 && found2 || found1 && gate.Input_two == 0 {
 				fmt.Println("Gate ready")
 				fmt.Println(gate)
 				//do operation
@@ -139,25 +151,75 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, sec int) finite.Number {
 					gateMutex.Lock()
 					multMaaaaap := gateMult[gate.GateNumber]
 					gateMutex.Unlock()
-					fmt.Println("Gatemap", gateMult)
-					fmt.Println("Mult map to reconstruct", multMaaaaap)
 					output = Reconstruct(multMaaaaap)
+				case "Output":
+					distributeResult([]finite.Number{input1}, partySize, gate.GateNumber)
+					/*for {
+						resultMutex.Lock()
+						resultLen := len(resultGate[gate.GateNumber])
+						resultMutex.Unlock()
+						if resultLen == partySize {
+							break
+						}
+					}*/
+				case "Multiply-Constant":
+					constantString := gate.Input_constant
+					constant := field.GetConstant(constantString)
+					output = field.Mul(input1, constant)
 				}
 				wiresMutex.Lock()
 				wires[gate.GateNumber] = output
 				wiresMutex.Unlock()
 				circuit.Gates = removeGate(circuit, gate, i)
 				if len(circuit.Gates) == 0 {
-					distributeResult([]finite.Number{output}, partySize)
+					//distributeResult([]finite.Number{output}, partySize)
 				}
+				//Restart for-loop
 				break
 				//Remove gate from circuits.gates
 			}
 		}
-		if len(receivedResults) == partySize {
-			result = Reconstruct(receivedResults)
+		var done = false
+		if len(circuit.Gates) != 0 {
+			continue//distributeResult([]finite.Number{output}, partySize)
+		}
+		switch field.(type) {
+			case Prime.Prime:
+				for {
+					if len(resultGate) > 0 {
+						break
+					}
+				}
+				keys := reflect.ValueOf(resultGate).MapKeys()
+				key := keys[0]
+				if len(resultGate[(key.Interface()).(int)]) == partySize {
+					result = Reconstruct(resultGate[(key.Interface()).(int)])
+					done = true
+				}
+
+			case Binary.Binary:
+				if len(resultGate) == len(secret.Binary) {
+					keys := reflect.ValueOf(resultGate).MapKeys()
+					var keysArray []int
+					for _, k := range keys {
+						keysArray = append(keysArray, (k.Interface()).(int))
+					}
+					sort.Ints(keysArray)
+					trueResult := make([]int, len(secret.Binary))
+					for i, v := range keysArray {
+						hej := Reconstruct(resultGate[v]).Binary[7]
+						fmt.Println("Result for gate", v, "is", hej)
+						trueResult[i] = hej
+					}
+					result = finite.Number{Binary: trueResult}
+					done = true
+				}
+		}
+		if done {
 			break
 		}
+		//result = Reconstruct(receivedResults)
+		//fmt.Println(result)
 	}
 
 	return result
@@ -191,19 +253,21 @@ func distributeMultShares(shares []finite.Number, partySize int, gate int) {
 	}
 }
 
-func distributeShares(shares []finite.Number, partySize int) {
-	fmt.Println(shares)
+func distributeShares(shares []finite.Number, partySize int, gate int) {
+	fmt.Println("Sending shares", shares)
+	fmt.Println("For wire", gate)
 	for party := 1; party <= partySize; party++ {
 		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
 			Type:   "Share",
 			Shares: []finite.Number{shares[party - 1]},
 			From:   network.GetPartyNumber(),
+			Gate: 	gate,
 		}
 
 		if network.GetPartyNumber() == party {
 			wiresMutex.Lock()
-			wires[party] = shares[party - 1]
+			wires[gate] = shares[party - 1]
 			wiresMutex.Unlock()
 			//receivedShares = append(receivedShares, shareSlice...)
 		}else {
@@ -213,7 +277,7 @@ func distributeShares(shares []finite.Number, partySize int) {
 	}
 }
 
-func distributeResult(result []finite.Number, partySize int) {
+func distributeResult(result []finite.Number, partySize int, gate int) {
 	for party := 1; party <= partySize; party++ {
 		if network.GetPartyNumber() != party {
 			shareBundle := numberbundle.NumberBundle{
@@ -221,11 +285,20 @@ func distributeResult(result []finite.Number, partySize int) {
 				Type: "Result",
 				Result: result[0],
 				From: network.GetPartyNumber(),
+				Gate: gate,
 			}
 
 			network.Send(shareBundle, party)
 		} else {
+			resultMutex.Lock()
+			receivedResults = resultGate[gate]
+			if receivedResults == nil {
+				receivedResults = make(map[int]finite.Number)
+			}
 			receivedResults[network.GetPartyNumber()] = result[0]
+			resultGate[gate] = receivedResults
+			resultMutex.Unlock()
+			//receivedResults[network.GetPartyNumber()] = result[0]
 		}
 	}
 }

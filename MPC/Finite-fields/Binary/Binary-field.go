@@ -3,15 +3,23 @@ package Binary
 import (
 	finite "MPC/Finite-fields"
 	"math/rand"
+	"time"
 )
 
 type Binary struct {
 
 }
 
+func (b Binary) GetConstant(constant int) finite.Number {
+	constantByte := ConvertXToByte(constant)
+	return finite.Number{Binary: constantByte}
+}
+
 var field finite.Number
+
 func (b Binary) InitSeed() {
 	field = finite.Number{Binary: make([]int, 8)}
+	rand.Seed(time.Now().UnixNano())
 }
 
 func (b Binary) SetSize(f finite.Number) {
@@ -23,18 +31,20 @@ func (b Binary) ComputeShares(parties int, secret finite.Number) []finite.Number
 	var t = (parties - 1) / 2 //Integer division rounds down automatically
 	//[0,0,..,1, 0] + [0,0,..,1, 0]x + [0,0,..,1, 0]x^2 (x -> [0,0,..,1, 0])
 	//[[0,0,..,1, 0], [0,0,..,1, 0], [0,0,..,1, 0]] -> shares er i binary
+
 	var polynomial = make([][]int, t + 1)
 	polynomial[0] = secret.Binary
 	for i := 1; i < len(polynomial); i++ {
 		polynomial[i] = createRandomByte()
 	}
+
 	shares := make([][]int, parties)
 	for i := 1; i <= parties; i++ {
 		shares[i - 1] = calculatePolynomial(polynomial, i)
 	}
 	result := make([]finite.Number, len(shares))
-	for i := 1; i < len(result); i++ {
-		result[i] = finite.Number{Binary: shares[i]}
+	for i := 1; i <= len(result); i++ {
+		result[i - 1] = finite.Number{Binary: shares[i - 1]}
 	}
 	return result
 
@@ -85,12 +95,12 @@ func bitExponent(byte []int, x int) []int {
 func createRandomByte() []int {
 	result := make([]int, 8)
 	for  i := 1; i < len(result); i++ {
-		result[i] = rand.Intn(1)
+		result[i] = rand.Intn(2)
 	}
 	return result
 }
 
-//TODO implement
+
 func (b Binary) GenerateField() finite.Number {
 	return finite.Number{Binary: make([]int, 8)}
 }

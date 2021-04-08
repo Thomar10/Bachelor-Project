@@ -4,13 +4,18 @@
       "GateNumber": 4,
       "Input_one": 1,
       "Input_two": 2,
-      "Operation": "Multiplication"
+      "Operation": "Addition"
     },
     {
       "GateNumber": 5,
-      "Input_one": 3,
-      "Input_two": 4,
-      "Operation": "Multiplication"
+      "Input_one": 4,
+      "Input_constant": 4,
+      "Operation": "Multiply-Constant"
+    },
+    {
+      "GateNumber": 6,
+      "Input_one": 5,
+      "Operation": "Output"
     }
   ]
 }

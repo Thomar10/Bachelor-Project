@@ -33,7 +33,7 @@
     {
       "GateNumber": 12,
       "Input_one": 9,
-      "Input_two": 8,
+      "Input_two": 6,
       "Operation": "Multiplication"
     },
     {
@@ -47,6 +47,16 @@
       "Input_one": 11,
       "Input_two": 12,
       "Operation": "Addition"
+    },
+    {
+      "GateNumber": 15,
+      "Input_one": 14,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 16,
+      "Input_one": 13,
+      "Operation": "Output"
     }
   ]
 }
