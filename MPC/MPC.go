@@ -68,9 +68,10 @@ func main() {
 		loadCircuit("SimpleCircuit.json")
 	}else if os.Args[2] == "-sss" {
 		secretSharing = Shamir.Shamir{}
-		loadCircuit("Circuit.json")
+		//loadCircuit("Circuit.json")
+		//loadCircuit("2BitFullAdder.json")
 		//loadCircuit("2BitAdder.json")
-		fmt.Println("Circuit", circuit)
+		loadCircuit("1BitCrazy.json")
 	} else {
 		panic("No secret sharing given")
 	}

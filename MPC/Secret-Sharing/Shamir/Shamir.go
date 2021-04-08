@@ -11,6 +11,7 @@ import (
 	_ "crypto/rand"
 	"fmt"
 	"github.com/google/uuid"
+	"math/big"
 	"reflect"
 	"sort"
 	"sync"
@@ -65,8 +66,10 @@ var gateMult = make(map[int]map[int]finite.Number)
 var wiresMutex = &sync.Mutex{}
 var gateMutex = &sync.Mutex{}
 var resultMutex = &sync.Mutex{}
+var resultMapMutex = &sync.Mutex{}
 var resultGate = make(map[int]map[int]finite.Number)
 var receivedResults = make(map[int]finite.Number)
+var corrupts = 0
 
 func (s Shamir) SetFunction(f string) {
 	function = f
@@ -89,7 +92,7 @@ func (s Shamir) SetField(f finite.Finite) {
 }
 
 func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number) finite.Number {
-
+	corrupts = (network.GetParties() - 1) / 2
 	partySize := network.GetParties()
 
 	receiver := Receiver{}
@@ -115,7 +118,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number) finite
 	//shares := s.ComputeShares(partySize, secret)
 
 
-
+	outputGates := outputSize(circuit)
 	for {
 		for i, gate := range circuit.Gates {
 			wiresMutex.Lock()
@@ -138,22 +141,25 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number) finite
 					interMult := field.Mul(input1, input2)
 					//interMult.Mod(interMult, field.GetSize())
 					multShares := s.ComputeShares(partySize, interMult)
-					fmt.Println("multshares", multShares)
 					distributeMultShares(multShares, partySize, gate.GateNumber)
-					for {
-						gateMutex.Lock()
-						multLen := len(gateMult[gate.GateNumber])
-						gateMutex.Unlock()
-						if multLen == partySize {
-							break
-						}
-					}
 					gateMutex.Lock()
-					multMaaaaap := gateMult[gate.GateNumber]
+					multMaap := gateMult[gate.GateNumber]
 					gateMutex.Unlock()
-					output = Reconstruct(multMaaaaap)
+					for {
+						if len(multMaap) == 2 * corrupts + 1  {
+							break
+						}else if len(multMaap) > 2 * corrupts + 1  {
+							for k, _ := range multMaap {
+								delete(multMaap, k)
+								break
+							}
+						}
+
+					}
+					output = Reconstruct(multMaap)
+
 				case "Output":
-					distributeResult([]finite.Number{input1}, partySize, gate.GateNumber)
+					distributeResult([]finite.Number{input1}, gate.Output, gate.GateNumber)
 					/*for {
 						resultMutex.Lock()
 						resultLen := len(resultGate[gate.GateNumber])
@@ -189,29 +195,76 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number) finite
 					if len(resultGate) > 0 {
 						break
 					}
+					if outputGates == 0 {
+						//No outputs for this party - return 0
+						result.Prime = big.NewInt(0)
+						return result
+					}
 				}
 				keys := reflect.ValueOf(resultGate).MapKeys()
 				key := keys[0]
-				if len(resultGate[(key.Interface()).(int)]) == partySize {
+				if len(resultGate[(key.Interface()).(int)]) == corrupts + 1 {
 					result = Reconstruct(resultGate[(key.Interface()).(int)])
 					done = true
+				} else if len(resultGate[(key.Interface()).(int)]) > corrupts + 1 {
+					resultMapMutex.Lock()
+					//Fjern indtil vi er på corrupts + 1
+					resultMap := resultGate[(key.Interface()).(int)]
+					for {
+						if len(resultGate[(key.Interface()).(int)]) == corrupts + 1 {
+							break
+						} else {
+							//Iterating over map gives keys in random order
+							for k, _ := range resultMap {
+								delete(resultMap, k)
+								break
+							}
+						}
+					}
+					result = Reconstruct(resultMap)
+					done = true
+					resultMapMutex.Unlock()
 				}
 
 			case Binary.Binary:
-				if len(resultGate) == len(secret.Binary) {
-					keys := reflect.ValueOf(resultGate).MapKeys()
-					var keysArray []int
-					for _, k := range keys {
-						keysArray = append(keysArray, (k.Interface()).(int))
+				if outputGates > 0 {
+					trueResult := make([]int, outputGates)
+					if len(resultGate) == outputGates {
+						keys := reflect.ValueOf(resultGate).MapKeys()
+						var keysArray []int
+						for _, k := range keys {
+							keysArray = append(keysArray, (k.Interface()).(int))
+						}
+						sort.Ints(keysArray)
+						for i, k := range keysArray {
+							for {
+								if len(resultGate[k]) == corrupts + 1  {
+									resultMapMutex.Lock()
+									resultBit := Reconstruct(resultGate[k]).Binary[7]
+									trueResult[i] = resultBit
+									resultMapMutex.Unlock()
+									break
+								}else if len(resultGate[k]) > corrupts + 1 {
+									for j, _ := range resultGate[k] {
+										delete(resultGate[k], j)
+										break
+									}
+								}
+							}
+						}
+
+						/*for i, v := range keysArray {
+							resultBit := Reconstruct(resultGate[v]).Binary[7]
+							fmt.Println(resultGate[v])
+							fmt.Println("Result for gate", v, "is", resultBit)
+							trueResult[i] = resultBit
+						}*/
+						//resultMapMutex.Unlock()
+						result = finite.Number{Binary: trueResult}
+						done = true
 					}
-					sort.Ints(keysArray)
-					trueResult := make([]int, len(secret.Binary))
-					for i, v := range keysArray {
-						hej := Reconstruct(resultGate[v]).Binary[7]
-						fmt.Println("Result for gate", v, "is", hej)
-						trueResult[i] = hej
-					}
-					result = finite.Number{Binary: trueResult}
+				} else {
+					result = finite.Number{Binary: []int{0}}
 					done = true
 				}
 		}
@@ -222,6 +275,16 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number) finite
 		//fmt.Println(result)
 	}
 
+	return result
+}
+
+func outputSize(circuit Circuit.Circuit) int {
+	result := 0
+	for _, gate := range circuit.Gates {
+		if gate.Operation == "Output" && gate.Output == network.GetPartyNumber() {
+			result++
+		}
+	}
 	return result
 }
 
@@ -277,8 +340,27 @@ func distributeShares(shares []finite.Number, partySize int, gate int) {
 	}
 }
 
-func distributeResult(result []finite.Number, partySize int, gate int) {
-	for party := 1; party <= partySize; party++ {
+func distributeResult(result []finite.Number, party int, gate int) {
+	if network.GetPartyNumber() != party {
+		shareBundle := numberbundle.NumberBundle{
+			ID:     uuid.Must(uuid.NewRandom()).String(),
+			Type:   "Result",
+			Result: result[0],
+			From:   network.GetPartyNumber(),
+			Gate:   gate,
+		}
+		network.Send(shareBundle, party)
+	}else {
+		resultMutex.Lock()
+		receivedResults = resultGate[gate]
+		if receivedResults == nil {
+			receivedResults = make(map[int]finite.Number)
+		}
+		receivedResults[network.GetPartyNumber()] = result[0]
+		resultGate[gate] = receivedResults
+		resultMutex.Unlock()
+	}
+/*	for party := 1; party <= partySize; party++ {
 		if network.GetPartyNumber() != party {
 			shareBundle := numberbundle.NumberBundle{
 				ID: uuid.Must(uuid.NewRandom()).String(),
@@ -300,7 +382,7 @@ func distributeResult(result []finite.Number, partySize int, gate int) {
 			resultMutex.Unlock()
 			//receivedResults[network.GetPartyNumber()] = result[0]
 		}
-	}
+	}*/
 }
 
 func removeGate(circuit Circuit.Circuit, gate Circuit.Gate, i int) []Circuit.Gate {

@@ -1,0 +1,52 @@
+{
+  "Gate": [
+    {
+      "GateNumber": 7,
+      "Input_one": 1,
+      "Input_two": 3,
+      "Operation": "Addition"
+    },
+    {
+      "GateNumber": 8,
+      "Input_one": 2,
+      "Input_two": 4,
+      "Operation": "Addition"
+    },
+    {
+      "GateNumber": 20,
+      "Input_one": 7,
+      "Output": 1,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 21,
+      "Input_one": 8,
+      "Output": 1,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 22,
+      "Input_one": 7,
+      "Output": 2,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 23,
+      "Input_one": 8,
+      "Output": 2,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 24,
+      "Input_one": 7,
+      "Output": 3,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 25,
+      "Input_one": 8,
+      "Output": 3,
+      "Operation": "Output"
+    }
+  ]
+}

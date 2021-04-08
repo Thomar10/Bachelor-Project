@@ -32,6 +32,7 @@ import (
 }*/
 
 func Reconstruct(shares map[int]finite.Number) finite.Number {
+	fmt.Println("Got following share map", shares)
 	keys := reflect.ValueOf(shares).MapKeys()
 	var keysArray []int
 	for _, k := range keys {
@@ -43,7 +44,13 @@ func Reconstruct(shares map[int]finite.Number) finite.Number {
 	var secret = finite.Number{Prime: big.NewInt(0), Binary: []int{0, 0, 0, 0, 0, 0, 0, 0}}
 	for _, key := range keysArray {
 		//secret += shares[key] * computeDelta(key, keysArray)[0]
-		var interRes = field.Mul(shares[key], computeDelta(key, keysArray))
+		delta := computeDelta(key, keysArray)
+		share := shares[key]
+		fmt.Println(delta)
+		fmt.Println(share)
+		var interRes = field.Mul(share, delta)
+		fmt.Println("interRes", interRes)
+
 		secret = field.Add(interRes, secret)
 
 		//iterRes := new(big.Int).Mul(shares[key], computeDelta(key, keysArray))
@@ -118,10 +125,9 @@ func computeDelta(key int, keys []int) finite.Number {
 		}
 		//talker *= key - j
 		//talker.Mul(talker, new(big.Int).Sub(big.NewInt(int64(key)), big.NewInt(int64(j))))
-
 		keyNumberBinary := field.Add(
 			finite.Number{
-				Prime: new(big.Int).Neg(big.NewInt(int64(key))),
+				Prime: new(big.Int).Neg(big.NewInt(int64(j))),
 				Binary: Binary.ConvertXToByte(255)},
 			finite.Number{
 				Prime: field.GetSize().Prime,
@@ -129,7 +135,7 @@ func computeDelta(key int, keys []int) finite.Number {
 
 		var keyNumber = finite.Number{Prime: keyNumberBinary.Prime, Binary: keyNumberBinary.Binary}
 
-		var jNumber = finite.Number{Prime: big.NewInt(int64(j)), Binary: Binary.ConvertXToByte(j)}
+		var jNumber = finite.Number{Prime: big.NewInt(int64(key)), Binary: Binary.ConvertXToByte(j)}
 
 		interRes := field.Add(keyNumber, jNumber)
 		talker = field.Mul(talker, interRes)

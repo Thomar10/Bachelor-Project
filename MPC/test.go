@@ -11,11 +11,13 @@ Test fil til at teste go kode uden at køre hele programmet xd
 
 func main() {
 
-
-	fmt.Println(bitMult(convertXToByte(1), convertXToByte(1)))
-	a := []int{0, 1, 0, 1, 0, 0, 1, 1}
+	a := []int{0, 0, 0, 1, 1, 0, 1, 1}
+	b := []int{0, 0, 0, 0, 0, 1, 0, 1}
+	fmt.Println(bitMult(a, b))
+	//fmt.Println(bitMult(convertXToByte(1), convertXToByte(1)))
+	//a := []int{0, 1, 0, 1, 0, 0, 1, 1}
 	//b := []int{1, 1, 0, 0, 1, 0, 1, 0}
-	fmt.Println("Inverse of a is:", findInverseBit(a))
+	//fmt.Println("Inverse of a is:", findInverseBit(a))
 	/*
 	a1 := []int{0, 0, 1, 1}
 	a2 := []int{0, 0, 1, 0}

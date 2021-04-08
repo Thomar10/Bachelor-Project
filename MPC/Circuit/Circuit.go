@@ -9,5 +9,6 @@ type Gate struct {
 	Input_one int `json:"Input_one"`
 	Input_two int `json:"Input_two"`
 	Input_constant int `json:"Input_constant"`
+	Output int `json:"Output"`
 	Operation string `json:"Operation"`
 }

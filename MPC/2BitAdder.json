@@ -51,11 +51,37 @@
     {
       "GateNumber": 15,
       "Input_one": 14,
+      "Output": 1,
       "Operation": "Output"
     },
     {
       "GateNumber": 16,
       "Input_one": 13,
+      "Output": 1,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 17,
+      "Input_one": 14,
+      "Output": 2,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 18,
+      "Input_one": 13,
+      "Output": 2,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 19,
+      "Input_one": 14,
+      "Output": 3,
+      "Operation": "Output"
+    },
+    {
+      "GateNumber": 20,
+      "Input_one": 13,
+      "Output": 3,
       "Operation": "Output"
     }
   ]

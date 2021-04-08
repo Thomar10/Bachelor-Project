@@ -3,12 +3,15 @@ package Binary
 import (
 	finite "MPC/Finite-fields"
 	"math/rand"
+	"sync"
 	"time"
 )
 
 type Binary struct {
 
 }
+
+var convMutex = &sync.Mutex{}
 
 func (b Binary) GetConstant(constant int) finite.Number {
 	constantByte := ConvertXToByte(constant)
@@ -51,6 +54,8 @@ func (b Binary) ComputeShares(parties int, secret finite.Number) []finite.Number
 }
 
 func intToBinaryArray(number, arraySize int) []int {
+	convMutex.Lock()
+	defer convMutex.Unlock()
 	result := make([]int, arraySize)
 	for i := 0; i < arraySize; i++ {
 		if number&(1<<uint8(i)) != 0 {
@@ -71,7 +76,8 @@ func reverse(s []int) []int {
 }
 
 func ConvertXToByte(x int) []int {
-	return reverse(intToBinaryArray(x, 8))
+	result := reverse(intToBinaryArray(x, 8))
+	return result
 }
 
 func calculatePolynomial(polynomial [][]int, x int) []int {
