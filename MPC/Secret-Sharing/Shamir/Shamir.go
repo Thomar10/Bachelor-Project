@@ -319,7 +319,9 @@ func distributeMultShares(shares []finite.Number, partySize int, gate int) {
 func distributeShares(shares []finite.Number, partySize int, gate int) {
 	fmt.Println("Sending shares", shares)
 	fmt.Println("For wire", gate)
+
 	for party := 1; party <= partySize; party++ {
+		fmt.Println("Im sending shares! Im party", network.GetPartyNumber())
 		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
 			Type:   "Share",

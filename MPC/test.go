@@ -1,115 +1,63 @@
 package main
 
 import (
-	finite "MPC/Finite-fields"
-	"MPC/Finite-fields/Binary"
-	"MPC/Finite-fields/Prime"
-	"MPC/Secret-Sharing/Shamir"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
-	"math/big"
 )
 
 /*
 Test fil til at teste go kode uden at køre hele programmet xd
 */
 
+
+
 func main() {
 
-	q := []int{0, 1, 1, 1, 1, 1, 0, 1}
-
-
-
-
-	b := []int{0, 0, 0, 0, 0, 0, 1, 1}
-
-
-
-	finiteFielfd := Binary.Binary{}
-	secretSharingg := Shamir.Shamir{}
-
-	finiteFielfd.SetSize(finite.Number{Binary: b, Prime: big.NewInt(0)})
-	secretSharingg.SetField(finiteFielfd)
-
-	fmt.Println("FUCK MI", Binary.BitExponent(q, 0))
-	qInv := finiteFielfd.Add(finite.Number{Binary: Binary.ConvertXToByte(0)}, finite.Number{Binary: q})
-	fmt.Println("Is qInv the inverse of q", finiteFielfd.Add(finite.Number{Binary: q}, qInv))
-	//init seed
-	//finiteFielfd.InitSeed()
-	shares := finiteFielfd.ComputeShares(3, finite.Number{Binary: b})
-	mapp := make(map[int]finite.Number)
-	for i := 2; i < 4; i++ {
-		mapp[i] = shares[i - 1]
+	/*openGates := make([][]int, 3)
+	for i, _ := range openGates {
+		openGates[i] = []int{1+i, 2+i, 3+i}
 	}
-	fmt.Println("Result", Shamir.Reconstruct(mapp))
-	//hmm := finite.Number{Binary: convertXToByte(1)}
-	//fmt.Println("Er det 3?", hmm)
-	//negOne := finiteFielfd.Add(finite.Number{Binary: convertXToByte(1)}, finite.Number{Binary: convertXToByte(255)})
-	//negTwo := finiteFielfd.Add(finite.Number{Binary: convertXToByte(2)}, finite.Number{Binary: convertXToByte(255)})
-	//fmt.Println("Tællllleren", finiteFielfd.Mul(hmm, negTwo))
+	fmt.Println(openGates[2:])*/
 
-	fmt.Println("")
-	fmt.Println("")
-	fmt.Println("Tester prime")
-	a := big.NewInt(9)
-	finiteFieldd := Prime.Prime{}
-	secretSharinggg := Shamir.Shamir{}
-	secretSharinggg.SetField(finiteFieldd)
-	finiteFieldd.SetSize(finite.Number{Binary: b, Prime: big.NewInt(89)})
-	primeShares := finiteFieldd.ComputeShares(3, finite.Number{Prime: a})
-	mappp := make(map[int]finite.Number)
-	for i := 2; i < 4; i++ {
-		mappp[i] = primeShares[ i - 1]
+	createdCircuit := createCircuit(4)
+	file, _ := json.MarshalIndent(createdCircuit, "", " ")
+
+	_ = ioutil.WriteFile("test.json", file, 0644)
+
+
+
+
+
+
+
+	//Hyper test
+	alpha := []int{1, 2, 3}
+	beta := []int{4, 5, 6}
+	matrix := make([][]int, 3)
+	for i, _ := range matrix {
+		matrix[i] = make([]int, 3)
+		for j, _ := range matrix {
+			matrix[i][j] = 1
+		}
 	}
-	fmt.Println("Result for prime", Shamir.Reconstruct(mappp))
-
-
-
-
-
-
-
-
-	//fmt.Println(bitMult(convertXToByte(1), convertXToByte(1)))
-	//a := []int{0, 1, 0, 1, 0, 0, 1, 1}
-	//b := []int{1, 1, 0, 0, 1, 0, 1, 0}
-	//fmt.Println("Inverse of a is:", findInverseBit(a))
-	/*
-	a1 := []int{0, 0, 1, 1}
-	a2 := []int{0, 0, 1, 0}
-
-
-	fmt.Println(sliceSubtraction(a1, a2))
-
-	 */
-
-	/*	fmt.Println(calcT(3))
-
-
-	secretSharing := Shamir.Shamir{}
-	finiteField := Prime.Prime{}
-	//finiteField.SetSize(3780287809)
-	finiteField.SetSize(137)
-	secretSharing.SetField(finiteField)
-	shares := secretSharing.ComputeShares(8, 5)
-
-	fmt.Println(shares)
-	test := make(map[int]int)
-	for i := 1; i < len(shares); i++ {
-		test[i] = shares[i - 1]
+	//fmt.Println(matrix)
+	for i, _ := range matrix {
+		for j, _ := range matrix {
+			for k := 0; k < 3; k++ {
+				if k == j {
+					continue
+				}else {
+					matrix[i][j] = ((beta[i] - alpha[k]) / (alpha[j] - alpha[k]) * matrix[i][j]) % 17
+				}
+			}
+			if matrix[i][j] < 0 {
+				matrix[i][j] = 17 + matrix[i][j]
+			}
+		}
 	}
-	fmt.Println(test)
-	fmt.Println("Reconstructed original share", Shamir.Reconstruct(test))*/
-	//shares := make(map[int][]int)
-	//shares[3] = []int{6}
-	//shares[4] = []int{6}
-	//shares[5] = []int{8}
-	//secretSharing.ComputeFunction(shares, 1)
-
-	//fmt.Println(permutationsInts)
-	//fmt.Println(math.Pow(2,3))
-	//fmt.Println(findInverse(-2, 11))
-
+	//fmt.Println(matrix)
 }
 
 func bitAdd(b1 []int, b2 []int) []int {
