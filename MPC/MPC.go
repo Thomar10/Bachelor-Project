@@ -48,36 +48,36 @@ var myPartyNumber int
 var circuit Circuit.Circuit
 
 func main() {
-	if os.Args[1] == "-p" {
+
+	circuitToLoad := os.Args[1]
+	loadCircuit(circuitToLoad + ".json")
+	var sec string
+	if len(os.Args) > 2 {
+		sec = os.Args[2]
+	}else {
+		sec = "-1"
+	}
+
+	if circuit.SecretSharing == "Shamir" {
+		secretSharing = Shamir.Shamir{}
+	}else {
+		secretSharing = Simple_Sharing.Simple_Sharing{}
+	}
+	if circuit.Field == "Prime" {
 		finiteField = Prime.Prime{}
-		sec, _ := strconv.Atoi(os.Args[4])
-		secret = finite.Number{Prime: big.NewInt(int64(sec))}
+		s, _ := strconv.Atoi(sec)
+		secret = finite.Number{Prime: big.NewInt(int64(s))}
 	}else {
 		finiteField = Binary.Binary{}
-		sec :=  os.Args[4]
 		secByte := make([]int, len(sec))
 		for i, r := range sec {
 			secByte[i], _ = strconv.Atoi(string(r))
 		}
 		secret = finite.Number{Binary: secByte}
 	}
+	partySize = circuit.PartySize
 	finiteField.InitSeed()
 	bundleType = numberbundle.NumberBundle{}
-	if os.Args[2] == "-s" {
-		secretSharing = Simple_Sharing.Simple_Sharing{}
-		loadCircuit("SimpleCircuit.json")
-	}else if os.Args[2] == "-sss" {
-		secretSharing = Shamir.Shamir{}
-		//loadCircuit("Circuit.json")
-		//loadCircuit("2BitFullAdder.json")
-		//loadCircuit("2BitAdder.json")
-		loadCircuit("test.json")
-	} else {
-		panic("No secret sharing given")
-	}
-	partySize, _ = strconv.Atoi(os.Args[3])
-
-
 
 	receiver := Receiver{}
 	network.RegisterReceiver(receiver)

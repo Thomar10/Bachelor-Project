@@ -10,15 +10,19 @@ import (
 
 func main() {
 	bitLengthString := os.Args[1]
+	parties, _ := strconv.Atoi(os.Args[2])
 	bitLength, _ := strconv.Atoi(bitLengthString)
-	file, _ := json.MarshalIndent(createCircuit(bitLength), "", " ")
+	file, _ := json.MarshalIndent(createCircuit(bitLength, parties), "", " ")
 	_ = ioutil.WriteFile("YaoBits"+ bitLengthString +".json", file, 0644)
 
 }
 
 //The following code contains high "job security"!
-func createCircuit(bits int) Circuit.Circuit {
+func createCircuit(bits, parties int) Circuit.Circuit {
 	circuitCreated := Circuit.Circuit{
+		PartySize: parties,
+		Field: "Binary",
+		SecretSharing: "Shamir",
 		Gates: createGates(bits),
 	}
 	return circuitCreated

@@ -1,6 +1,9 @@
 package Circuit
 
 type Circuit struct {
+	PartySize int `json:"PartySize"`
+	Field string `json:"Field"`
+	SecretSharing string `json:"SecretSharing"`
 	Gates []Gate `json:"Gate"`
 }
 

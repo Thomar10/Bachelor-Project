@@ -1,4 +1,7 @@
 {
+  "PartySize": 3,
+  "Field": "Binary",
+  "SecretSharing": "Shamir",
   "Gate": [
     {
       "GateNumber": 7,
