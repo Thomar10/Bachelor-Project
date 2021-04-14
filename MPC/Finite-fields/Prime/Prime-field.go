@@ -3,7 +3,6 @@ package Prime
 import (
 	Finite_fields "MPC/Finite-fields"
 	crand "crypto/rand"
-	"fmt"
 	"math/big"
 )
 
@@ -47,7 +46,6 @@ func (p Prime) InitSeed() {
 }
 
 func (p Prime) SetSize(f Finite_fields.Number) {
-	fmt.Println("jeg bliver kaldt med ", f)
 	primeNumber = f
 }
 func (p Prime) GetSize() Finite_fields.Number {

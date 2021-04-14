@@ -1,10 +1,12 @@
 package main
 
 import (
-	"encoding/json"
+	finite "MPC/Finite-fields"
+	"MPC/Finite-fields/Prime"
+	"MPC/Preparation"
 	"fmt"
-	"io/ioutil"
 	"math"
+	"math/big"
 )
 
 /*
@@ -14,50 +16,23 @@ Test fil til at teste go kode uden at køre hele programmet xd
 
 
 func main() {
+	finiteFieldd := Prime.Prime{}
+	finiteFieldd.InitSeed()
+	finiteSize := finiteFieldd.GenerateField()
+	finiteFieldd.SetSize(finiteSize)
+	matrix := Preparation.CreateHyperMatrix(5, finiteFieldd)
 
-	/*openGates := make([][]int, 3)
-	for i, _ := range openGates {
-		openGates[i] = []int{1+i, 2+i, 3+i}
-	}
-	fmt.Println(openGates[2:])*/
-
-	createdCircuit := createCircuit(4)
-	file, _ := json.MarshalIndent(createdCircuit, "", " ")
-
-	_ = ioutil.WriteFile("test.json", file, 0644)
-
-
-
-
-
+	fmt.Println(matrix)
+	x := make([]finite.Number, 5)
+	x[0] = finite.Number{Prime: big.NewInt(2)}
+	x[1] = finite.Number{Prime: big.NewInt(1)}
+	x[2] = finite.Number{Prime: big.NewInt(0)}
+	x[3] = finite.Number{Prime: big.NewInt(4)}
+	x[4] = finite.Number{Prime: big.NewInt(2)}
+	fmt.Println(Preparation.ExtractRandomness(x, matrix, finiteFieldd, 5))
 
 
-	//Hyper test
-	alpha := []int{1, 2, 3}
-	beta := []int{4, 5, 6}
-	matrix := make([][]int, 3)
-	for i, _ := range matrix {
-		matrix[i] = make([]int, 3)
-		for j, _ := range matrix {
-			matrix[i][j] = 1
-		}
-	}
-	//fmt.Println(matrix)
-	for i, _ := range matrix {
-		for j, _ := range matrix {
-			for k := 0; k < 3; k++ {
-				if k == j {
-					continue
-				}else {
-					matrix[i][j] = ((beta[i] - alpha[k]) / (alpha[j] - alpha[k]) * matrix[i][j]) % 17
-				}
-			}
-			if matrix[i][j] < 0 {
-				matrix[i][j] = 17 + matrix[i][j]
-			}
-		}
-	}
-	//fmt.Println(matrix)
+
 }
 
 func bitAdd(b1 []int, b2 []int) []int {
