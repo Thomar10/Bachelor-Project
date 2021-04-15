@@ -14,6 +14,16 @@ type Binary struct {
 
 var convMutex = &sync.Mutex{}
 
+
+func (p Binary) FilledUp(numbers []finite.Number) bool {
+	for _, number := range numbers {
+		if number.Binary[0] == -1 {
+			return false
+		}
+	}
+	return true
+}
+
 func (b Binary) GetConstant(constant int) finite.Number {
 	constantByte := ConvertXToByte(constant)
 	return finite.Number{Binary: constantByte}
@@ -39,9 +49,8 @@ func (b Binary) ComputeShares(parties int, secret finite.Number) []finite.Number
 	var polynomial = make([][]int, t + 1)
 	polynomial[0] = secret.Binary
 	for i := 1; i < len(polynomial); i++ {
-		polynomial[i] = createRandomByte()
+		polynomial[i] = CreateRandomByte()
 	}
-	fmt.Println("Our random polynomial", polynomial)
 
 	shares := make([][]int, parties)
 	for i := 1; i <= parties; i++ {
@@ -111,7 +120,7 @@ func bitExponent(byte []int, x int) []int {
 	return result
 }
 
-func createRandomByte() []int {
+func CreateRandomByte() []int {
 	result := make([]int, 8)
 	for  i := 1; i < len(result); i++ {
 		result[i] = rand.Intn(2)

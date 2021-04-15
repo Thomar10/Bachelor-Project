@@ -12,6 +12,7 @@ type Finite interface {
 	ComputeShares(parties int, secret Number) []Number
 	FindInverse(a, prime Number) Number
 	GetConstant(constantString int) Number
+	FilledUp([]Number) bool
 }
 type Number struct {
 	Prime *big.Int

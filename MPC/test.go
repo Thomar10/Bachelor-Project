@@ -1,12 +1,8 @@
 package main
 
 import (
-	finite "MPC/Finite-fields"
-	"MPC/Finite-fields/Prime"
-	"MPC/Preparation"
 	"fmt"
 	"math"
-	"math/big"
 )
 
 /*
@@ -16,20 +12,6 @@ Test fil til at teste go kode uden at køre hele programmet xd
 
 
 func main() {
-	finiteFieldd := Prime.Prime{}
-	finiteFieldd.InitSeed()
-	finiteSize := finiteFieldd.GenerateField()
-	finiteFieldd.SetSize(finiteSize)
-	matrix := Preparation.CreateHyperMatrix(5, finiteFieldd)
-
-	fmt.Println(matrix)
-	x := make([]finite.Number, 5)
-	x[0] = finite.Number{Prime: big.NewInt(2)}
-	x[1] = finite.Number{Prime: big.NewInt(1)}
-	x[2] = finite.Number{Prime: big.NewInt(0)}
-	x[3] = finite.Number{Prime: big.NewInt(4)}
-	x[4] = finite.Number{Prime: big.NewInt(2)}
-	fmt.Println(Preparation.ExtractRandomness(x, matrix, finiteFieldd, 5))
 
 
 

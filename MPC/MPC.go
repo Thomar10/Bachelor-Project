@@ -8,6 +8,7 @@ import (
 	"MPC/Finite-fields/Binary"
 	"MPC/Finite-fields/Prime"
 	network "MPC/Network"
+	"MPC/Preparation"
 	secretsharing "MPC/Secret-Sharing"
 	"MPC/Secret-Sharing/Shamir"
 	Simple_Sharing "MPC/Secret-Sharing/Simple-Sharing"
@@ -46,6 +47,7 @@ var secret finite.Number
 var sizeSet bool
 var myPartyNumber int
 var circuit Circuit.Circuit
+var preprocessing = true
 
 func main() {
 
@@ -57,7 +59,6 @@ func main() {
 	}else {
 		sec = "-1"
 	}
-
 	if circuit.SecretSharing == "Shamir" {
 		secretSharing = Shamir.Shamir{}
 	}else {
@@ -78,6 +79,7 @@ func main() {
 	partySize = circuit.PartySize
 	finiteField.InitSeed()
 	bundleType = numberbundle.NumberBundle{}
+
 
 	receiver := Receiver{}
 	network.RegisterReceiver(receiver)
@@ -111,14 +113,17 @@ func main() {
 	}
 
 
-
 	for {
 		if sizeSet {
 			break
 		}
 	}
+	if preprocessing {
+		corrupts := (partySize - 1) / 2
+		Preparation.Prepare(circuit, finiteField, corrupts, secretSharing)
+	}
 
-	result := secretSharing.TheOneRing(circuit, secret)
+	result := secretSharing.TheOneRing(circuit, secret, preprocessing)
 	switch finiteField.(type) {
 		case Prime.Prime:
 			fmt.Println("Final result:", result.Prime)

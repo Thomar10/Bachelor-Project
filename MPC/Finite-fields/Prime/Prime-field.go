@@ -10,6 +10,18 @@ type Prime struct {
 
 }
 
+
+func (p Prime) FilledUp(numbers []Finite_fields.Number) bool {
+	for _, number := range numbers {
+		//r >= 0 if 0 is bigger or equal to number.Prime
+		r := number.Prime.Cmp(big.NewInt(0))
+		if r < 0 {
+			return false
+		}
+	}
+	return true
+}
+
 func (p Prime) GetConstant(constant int) Finite_fields.Number {
 	return Finite_fields.Number{Prime: big.NewInt(int64(constant))}
 }
@@ -54,7 +66,7 @@ func (p Prime) GetSize() Finite_fields.Number {
 
 
 func (p Prime) GenerateField() Finite_fields.Number {
-	bigPrime, err := crand.Prime(crand.Reader, 32) //32 to because it should be big enough
+	bigPrime, err := crand.Prime(crand.Reader, 32)
 	if err != nil {
 		panic("Unable to compute prime")
 	}
