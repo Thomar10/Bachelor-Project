@@ -43,9 +43,11 @@ var r2tMapMutex = &sync.Mutex{}
 var r2tMap = make(map[int]map[int]finite.Number)
 
 func (r Receiver) Receive(bundle bundle.Bundle) {
+	//fmt.Println("I have received bundle prep:", bundle)
 	switch match := bundle.(type) {
 	case numberbundle.NumberBundle:
 		if match.Type == "PrepShare"{
+			fmt.Println("The prepShare I got", match)
 			prepMutex.Lock()
 			list := prepShares[match.Gate]
 			list[match.From - 1] = match.Shares[0]
@@ -60,9 +62,9 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			r2tShares[match.From] = match.Shares[0]
 			r2tMap[match.Gate] = r2tShares
 			r2tMapMutex.Unlock()
-		}  else {
+		}/* else {
 			panic("Given type is unknown, got type: " +  match.Type)
-		}
+		}*/
 	}
 }
 
@@ -84,13 +86,14 @@ func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir 
 	}
 
 	for i := 1; i <= multiGates; i += partySize - corrupts {
-		random := createRandomNumber()
+		random := createRandomNumber(field)
 		yList := createRandomTuple(partySize, field, corrupts, i, random)
-		random = createRandomNumber()
+		random = createRandomNumber(field)
 		xList := createRandomTuple(partySize, field, corrupts, i, random)
-		random = createRandomNumber()
+		random = createRandomNumber(field)
 		rList := createRandomTuple(partySize, field, corrupts, i, random)
 		r2tList := createRandomTuple(2*partySize, field, corrupts, i, random)
+		panic("Only one run")
 		for j, _ := range yList {
 			y[j + i] = yList[j]
 			x[j + i] = xList[j]
@@ -112,8 +115,10 @@ func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir 
 		}
 	}
 	//Calculate z in the triple
-	//TODO ved fejl tjek her xd
-	for i, _ := range y {
+	fmt.Println("X", x)
+	fmt.Println("Y", y)
+	k := len(y)
+	for i := 1; i <= k; i++ {
 		xy := field.Mul(x[i], y[i])
 		r2tInv := field.Mul(r2t[i], finite.Number{
 			Prime: big.NewInt(-1),
@@ -125,15 +130,27 @@ func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir 
 			r2tMapMutex.Lock()
 			r2tMapLength := len(r2tMap[i])
 			r2tMapMutex.Unlock()
-			if r2tMapLength == partySize {
+			if r2tMapLength >= partySize {
 				xyr := Shamir.Reconstruct(r2tMap[i])
+				//fmt.Println("ab-r", xyr)
+				//fmt.Println("r", r[i])
+				//fmt.Println("r2t", r2t[i])
 				//Add xyr to r to get xy=[z]_t
 				resZ := field.Add(r[i], xyr)
 				z[i] = resZ
 				break
 			}
 		}
+
 	}
+	fmt.Println("Preparation is done!")
+	fmt.Println("x", x)
+	fmt.Println("y", y)
+	fmt.Println("z", z)
+	fmt.Println("r", r)
+	fmt.Println("r2t", r2t)
+
+	panic("im gay hehe")
 	shamir.SetTriple(x, y, z)
 }
 
@@ -160,9 +177,6 @@ func listUnFilled(size int) []finite.Number{
 
 
 func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, number finite.Number) []finite.Number  {
-	prepMutex.Lock()
-	prepShares[i] = listUnFilled(network.GetParties())
-	prepMutex.Unlock()
 	randomShares := field.ComputeShares(partySize, number)
 	distributeShares(randomShares, network.GetParties(), i)
 	for {
@@ -178,7 +192,10 @@ func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, 
 	prepMutex.Lock()
 	xShares = prepShares[i]
 	prepMutex.Unlock()
+
+	fmt.Println("The random shares from all parties for ", i, xShares)
 	return extractRandomness(xShares, matrix, field, corrupts)
+
 }
 
 func listFilledUp(list []finite.Number, field finite.Finite) bool {
@@ -186,7 +203,7 @@ func listFilledUp(list []finite.Number, field finite.Finite) bool {
 }
 
 
-func createRandomNumber() finite.Number {
+func createRandomNumber(field finite.Finite) finite.Number {
 	randomNumber := finite.Number{}
 	randomPrime, err := crand.Prime(crand.Reader, 32)
 	if err != nil {
@@ -194,6 +211,8 @@ func createRandomNumber() finite.Number {
 	}
 	randomNumber.Prime = randomPrime
 	randomNumber.Binary = Binary.CreateRandomByte()
+	//Make sure random number is in the field
+	randomNumber = field.Add(randomNumber, finite.Number{Prime: big.NewInt(0)})
 	return randomNumber
 }
 
@@ -246,20 +265,22 @@ func createHyperMatrix(partySize int, field finite.Finite) {
 }
 
 func extractRandomness(x []finite.Number, matrix [][]finite.Number, field finite.Finite, corrupts int) []finite.Number{
-	y := make([]finite.Number, len(x))
+	ye := make([]finite.Number, len(x))
 	for i := 0; i < len(matrix); i++ {
-		y[i] = finite.Number{Prime: big.NewInt(0), Binary: Binary.ConvertXToByte(0)}
+		ye[i] = finite.Number{Prime: big.NewInt(0), Binary: Binary.ConvertXToByte(0)}
 		for j := 0; j < len(matrix[i]); j++ {
-			y[i] = field.Add(y[i], field.Mul(matrix[i][j], x[j]))
+			ye[i] = field.Add(ye[i], field.Mul(matrix[i][j], x[j]))
 			//y[i] = y[i] + matrix[i][j] * x[j]
 		}
 	}
-	return y[:len(x) - corrupts]
+	return ye//ye[:len(x) - corrupts]
 }
 
 func distributeShares(shares []finite.Number, partySize int, gate int) {
+	fmt.Println("My random shares for ", gate , shares)
+	fmt.Println("")
 	for party := 1; party <= partySize; party++ {
-		fmt.Println("Im sending shares! Im party", network.GetPartyNumber())
+		//fmt.Println("Im sending shares! Im party", network.GetPartyNumber())
 		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
 			Type:   "PrepShare",
@@ -281,7 +302,7 @@ func distributeShares(shares []finite.Number, partySize int, gate int) {
 }
 func distributeR2T(share finite.Number, partySize int, gate int) {
 	for party := 1; party <= partySize; party++ {
-		fmt.Println("Im sending shares! Im party", network.GetPartyNumber())
+		//fmt.Println("Im sending shares! Im party", network.GetPartyNumber())
 		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
 			Type:   "R2TShare",

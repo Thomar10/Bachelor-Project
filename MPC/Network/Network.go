@@ -41,7 +41,7 @@ var readyParties = make(map[net.Conn]bool)
 var readySent = false
 var readyMutex = &sync.Mutex{}
 var isHost bool
-var receiver Receiver
+var receiver []Receiver
 var myIP string
 
 var debug = true
@@ -101,7 +101,7 @@ func Init(networkSize int) bool {
 }
 
 func RegisterReceiver(r Receiver) {
-	receiver = r
+	receiver = append(receiver, r)
 }
 
 func GetParties() int {
@@ -215,12 +215,15 @@ func handleConnection(conn net.Conn) {
 		}
 
 		if packet.Type == "bundle" {
-			if receiver == nil {
+			if len(receiver) == 0 {
 				fmt.Println("No receiver registered")
 				return
 			}
-
-			receiver.Receive(packet.Bundle)
+			//fmt.Println("Sending packet to receivers ", packet.Bundle)
+			for _, r := range receiver {
+				r.Receive(packet.Bundle)
+			}
+			//receiver.Receive(packet.Bundle)
 		}
 
 		if packet.Type == "ready" {

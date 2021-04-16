@@ -27,10 +27,11 @@ type Receiver struct {
 
 
 func (r Receiver) Receive(bundle bundle.Bundle) {
-	//fmt.Println("I have received bundle:", bundle)
+	//fmt.Println("I have received bundle shamir:", bundle)
 	switch match := bundle.(type) {
 	case numberbundle.NumberBundle:
 		if match.Type == "Share"{
+			fmt.Println("I got share", match)
 			wiresMutex.Lock()
 			wires[match.Gate] = match.Shares[0]
 			wiresMutex.Unlock()
@@ -52,7 +53,6 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			receivedResults[match.From] = match.Result
 			resultGate[match.Gate] = receivedResults
 			resultMutex.Unlock()
-			//receivedResults[match.From] = match.Result
 		}else if match.Type == "ED" {
 			eMultMutex.Lock()
 			eMultMap := eMult[match.Gate]
@@ -71,9 +71,9 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			dMultMap[match.From] = match.Shares[1]
 			dMult[match.Gate] = dMultMap
 			dMultMutex.Unlock()
-		} else {
-			panic("Given type is unknown")
-		}
+		} /*else {
+			panic("Given type is unknown, " + match.Type)
+		}*/
 	}
 }
 
@@ -230,10 +230,10 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 				}
 				keys := reflect.ValueOf(resultGate).MapKeys()
 				key := keys[0]
-				if len(resultGate[(key.Interface()).(int)]) == corrupts + 1 {
+				if len(resultGate[(key.Interface()).(int)]) >= corrupts + 1 { //var == før
 					result = Reconstruct(resultGate[(key.Interface()).(int)])
 					done = true
-				} else if len(resultGate[(key.Interface()).(int)]) > corrupts + 1 {
+				} /*else if len(resultGate[(key.Interface()).(int)]) > corrupts + 1 {
 					resultMapMutex.Lock()
 					//Fjern indtil vi er på corrupts + 1
 					resultMap := resultGate[(key.Interface()).(int)]
@@ -251,7 +251,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 					result = Reconstruct(resultMap)
 					done = true
 					resultMapMutex.Unlock()
-				}
+				} */
 
 			case Binary.Binary:
 				if outputGates > 0 {
@@ -265,18 +265,18 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 						sort.Ints(keysArray)
 						for i, k := range keysArray {
 							for {
-								if len(resultGate[k]) == corrupts + 1  {
+								if len(resultGate[k]) >= corrupts + 1  { //Var == før
 									resultMapMutex.Lock()
 									resultBit := Reconstruct(resultGate[k]).Binary[7]
 									trueResult[i] = resultBit
 									resultMapMutex.Unlock()
 									break
-								}else if len(resultGate[k]) > corrupts + 1 {
+								}/* else if len(resultGate[k]) > corrupts + 1 {
 									for j, _ := range resultGate[k] {
 										delete(resultGate[k], j)
 										break
 									}
-								}
+								} */
 							}
 						}
 
@@ -329,10 +329,10 @@ func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize
 
 func processedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize int) finite.Number {
 	triple := getTriple()
-	x := field.Mul(triple[0], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-x
-	y := field.Mul(triple[1], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-y
-	e := field.Add(input1, x)//input1 - triple[0]
-	d := field.Add(input2, y)//input2 - triple[1]
+	xt := field.Mul(triple[0], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-x
+	yt := field.Mul(triple[1], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-y
+	e := field.Add(input1, xt)//input1 - triple[0]
+	d := field.Add(input2, yt)//input2 - triple[1]
 	//Distribute e and d
 	distributeED([]finite.Number{e, d}, partySize, gate.GateNumber)
 	//Reconstruct e
@@ -341,6 +341,7 @@ func processedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize in
 			break
 		}
 	}
+	fmt.Println(eMult)
 	eOpen := Reconstruct(eMult[gate.GateNumber])
 	//Reconstruct d
 	for {
@@ -371,6 +372,7 @@ func outputSize(circuit Circuit.Circuit) int {
 	return result
 }
 func distributeED(shares []finite.Number, partySize int, gate int) {
+	fmt.Println("Sending ED", shares)
 	for party := 1; party <= partySize; party++ {
 		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
@@ -436,7 +438,7 @@ func distributeMultShares(shares []finite.Number, partySize int, gate int) {
 func distributeShares(shares []finite.Number, partySize int, gate int) {
 
 	for party := 1; party <= partySize; party++ {
-		fmt.Println("Im sending shares! Im party", network.GetPartyNumber())
+		//fmt.Println("Im sending shares! Im party", network.GetPartyNumber())
 		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
 			Type:   "Share",

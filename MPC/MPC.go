@@ -19,6 +19,7 @@ import (
 	"math/big"
 	"os"
 	"strconv"
+	"time"
 )
 
 type Receiver struct {
@@ -26,16 +27,16 @@ type Receiver struct {
 }
 
 func (r Receiver) Receive(bundle bundle.Bundle) {
-	fmt.Println("I have received bundle:", bundle)
+	//fmt.Println("I have received bundle:", bundle)
 	switch match := bundle.(type) {
 		case numberbundle.NumberBundle:
 			if match.Type == "Prime" {
 				myPartyNumber = network.GetPartyNumber()
 				createField(finite.Number{Prime: match.Prime.Prime})
 				sizeSet = true
-			} else {
+			} /*else {
 				panic("Given type is unknown: "+ match.Type)
-			}
+			}*/
 	}
 }
 
@@ -121,9 +122,11 @@ func main() {
 	if preprocessing {
 		corrupts := (partySize - 1) / 2
 		Preparation.Prepare(circuit, finiteField, corrupts, secretSharing)
+		time.Sleep(1)
 	}
 
 	result := secretSharing.TheOneRing(circuit, secret, preprocessing)
+	time.Sleep(10)
 	switch finiteField.(type) {
 		case Prime.Prime:
 			fmt.Println("Final result:", result.Prime)

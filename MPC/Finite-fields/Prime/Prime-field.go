@@ -3,6 +3,7 @@ package Prime
 import (
 	Finite_fields "MPC/Finite-fields"
 	crand "crypto/rand"
+	"fmt"
 	"math/big"
 )
 
@@ -31,6 +32,7 @@ var primeNumber Finite_fields.Number
 func (p Prime) ComputeShares(parties int, secret Finite_fields.Number) []Finite_fields.Number {
 	// t should be less than half of connected parties t < 1/2 n
 	var t = (parties - 1) / 2 //Integer division rounds down automatically
+	fmt.Println("Im computing shares for ", t, " corrupts")
 	//3 + 4x + 2x^2
 	//[3, 4, 2]
 	var polynomial = make([]*big.Int, t + 1)
@@ -66,11 +68,12 @@ func (p Prime) GetSize() Finite_fields.Number {
 
 
 func (p Prime) GenerateField() Finite_fields.Number {
-	bigPrime, err := crand.Prime(crand.Reader, 32)
+	/*bigPrime, err := crand.Prime(crand.Reader, 32)
 	if err != nil {
 		panic("Unable to compute prime")
 	}
-	return Finite_fields.Number{Prime: bigPrime}
+	return Finite_fields.Number{Prime: bigPrime}*/
+	return Finite_fields.Number{Prime: big.NewInt(17)}
 }
 
 func (p Prime) Add(n1, n2 Finite_fields.Number) Finite_fields.Number {

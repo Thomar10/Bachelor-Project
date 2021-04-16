@@ -32,8 +32,6 @@ import (
 }*/
 
 func Reconstruct(shares map[int]finite.Number) finite.Number {
-
-	fmt.Println("Got following share map", shares)
 	keys := reflect.ValueOf(shares).MapKeys()
 	var keysArray []int
 	for _, k := range keys {
@@ -41,17 +39,12 @@ func Reconstruct(shares map[int]finite.Number) finite.Number {
 	}
 	sort.Ints(keysArray)
 	//deltas := make([][]int, len(keysArray))
-	fmt.Println(keysArray)
 	var secret = finite.Number{Prime: big.NewInt(0), Binary: []int{0, 0, 0, 0, 0, 0, 0, 0}}
 	for _, key := range keysArray {
 		//secret += shares[key] * computeDelta(key, keysArray)[0]
 		delta := computeDelta(key, keysArray)
 		share := shares[key]
-		fmt.Println("Delta",delta)
-		fmt.Println("Share", share)
 		var interRes = field.Mul(share, delta)
-		fmt.Println("interRes", interRes)
-
 		secret = field.Add(interRes, secret)
 
 		//iterRes := new(big.Int).Mul(shares[key], computeDelta(key, keysArray))
@@ -144,7 +137,6 @@ func computeDelta(key int, keys []int) finite.Number {
 	//talker = talker % field.GetSize()
 	//talker.Mod(talker, field.GetSize())
 	var inverseTalker = field.FindInverse(talker, field.GetSize())
-	fmt.Println("Is it truly inverse?", field.Mul(inverseTalker, talker))
 	keyIndex := 0
 	for i := 0; i < len(keys); i++ {
 		if keys[i] == key {
@@ -154,7 +146,6 @@ func computeDelta(key int, keys []int) finite.Number {
 	keysWithoutkey := removeElementI(keys, keyIndex)
 
 	var polynomial = finite.Number{Prime: big.NewInt(1), Binary: []int{0, 0, 0, 0, 0, 0, 0, 1}}
-	fmt.Println("numbers", keysWithoutkey)
 	for _, number := range keysWithoutkey {
 		//polynomial[0] = polynomial[0] * -number
 		//polynomial.Mul(polynomial, big.NewInt(int64(-number)))
@@ -169,7 +160,6 @@ func computeDelta(key int, keys []int) finite.Number {
 
 		polynomial = field.Mul(polynomial, numberNumber)
 	}
-	fmt.Println("Tælleren for delta", key , polynomial)
 	//polynomial.Mod(polynomial, field.GetSize())
 	/*r := polynomial.Cmp(big.NewInt(0))
 	if r < 0 {
