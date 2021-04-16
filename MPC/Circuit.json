@@ -23,19 +23,19 @@
     },
     {
       "GateNumber": 7,
-      "Input_one": 4,
+      "Input_one": 6,
       "Output": 1,
       "Operation": "Output"
     },
     {
       "GateNumber": 8,
-      "Input_one": 4,
+      "Input_one": 6,
       "Output": 2,
       "Operation": "Output"
     },
     {
       "GateNumber": 9,
-      "Input_one": 4,
+      "Input_one": 6,
       "Output": 3,
       "Operation": "Output"
     }

@@ -7,6 +7,7 @@ import (
 type NumberBundle struct {
 	ID string
 	Type string
+	Random string
 	Prime Finite_fields.Number
 	Shares []Finite_fields.Number
 	Result Finite_fields.Number

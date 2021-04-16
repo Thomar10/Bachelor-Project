@@ -31,7 +31,7 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 	switch match := bundle.(type) {
 	case numberbundle.NumberBundle:
 		if match.Type == "Share"{
-			fmt.Println("I got share", match)
+			//fmt.Println("I got share", match)
 			wiresMutex.Lock()
 			wires[match.Gate] = match.Shares[0]
 			wiresMutex.Unlock()
@@ -143,7 +143,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 	var result finite.Number
 	switch field.(type) {
 		case Binary.Binary:
-			fmt.Println("Im party", network.GetPartyNumber())
+			//fmt.Println("Im party", network.GetPartyNumber())
 			//Udregn shares
 			for i, sec := range secret.Binary {
 				binarySec := make([]int, 8)
@@ -172,8 +172,6 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 				var output finite.Number
 				switch gate.Operation {
 				case "Addition":
-					fmt.Println(input1)
-					fmt.Println(input2)
 					output = field.Add(input1, input2)
 					//output = new(big.Int).Add(input1, input2)
 					//output.Mod(output, field.GetSize())
@@ -337,19 +335,28 @@ func processedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize in
 	distributeED([]finite.Number{e, d}, partySize, gate.GateNumber)
 	//Reconstruct e
 	for {
-		if len(eMult[gate.GateNumber]) >= corrupts + 1 {
+		eMultMutex.Lock()
+		eMultLength :=  len(eMult[gate.GateNumber])
+		eMultMutex.Unlock()
+		if eMultLength >= corrupts + 1 {
 			break
 		}
 	}
-	fmt.Println(eMult)
-	eOpen := Reconstruct(eMult[gate.GateNumber])
+
+	eMultMutex.Lock()
+	eMultGate := eMult[gate.GateNumber]
+	eMultMutex.Unlock()
+	eOpen := Reconstruct(eMultGate)
 	//Reconstruct d
 	for {
 		if len(dMult[gate.GateNumber]) >= corrupts + 1 {
 			break
 		}
 	}
-	dOpen := Reconstruct(dMult[gate.GateNumber])
+	dMultMutex.Lock()
+	dMultGate := dMult[gate.GateNumber]
+	dMultMutex.Unlock()
+	dOpen := Reconstruct(dMultGate)
 	//Calculate ab
 	eb := field.Mul(eOpen, input2)
 	da := field.Mul(dOpen, input1)
@@ -372,7 +379,7 @@ func outputSize(circuit Circuit.Circuit) int {
 	return result
 }
 func distributeED(shares []finite.Number, partySize int, gate int) {
-	fmt.Println("Sending ED", shares)
+	//fmt.Println("Sending ED", shares)
 	for party := 1; party <= partySize; party++ {
 		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),

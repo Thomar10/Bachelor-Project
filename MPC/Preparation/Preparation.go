@@ -10,7 +10,6 @@ import (
 	secretsharing "MPC/Secret-Sharing"
 	"MPC/Secret-Sharing/Shamir"
 	crand "crypto/rand"
-	"fmt"
 	"github.com/google/uuid"
 	"math/big"
 	"sync"
@@ -37,7 +36,7 @@ var r = make(map[int]finite.Number)
 var r2t = make(map[int]finite.Number)
 
 var prepMutex = &sync.Mutex{}
-var prepShares = make(map[int][]finite.Number)
+var prepShares = make(map[int]map[string][]finite.Number)
 var r2tShares = make(map[int]finite.Number)
 var r2tMapMutex = &sync.Mutex{}
 var r2tMap = make(map[int]map[int]finite.Number)
@@ -47,11 +46,15 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 	switch match := bundle.(type) {
 	case numberbundle.NumberBundle:
 		if match.Type == "PrepShare"{
-			fmt.Println("The prepShare I got", match)
 			prepMutex.Lock()
-			list := prepShares[match.Gate]
+			randomMap := prepShares[match.Gate]
+			if randomMap == nil {
+				randomMap = make(map[string][]finite.Number)
+			}
+			list := randomMap[match.Random]
 			list[match.From - 1] = match.Shares[0]
-			prepShares[match.Gate] = list
+			randomMap[match.Random] = list
+			prepShares[match.Gate] = randomMap
 			prepMutex.Unlock()
 		} else if match.Type == "R2TShare" {
 			r2tMapMutex.Lock()
@@ -81,19 +84,26 @@ func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir 
 	//Calculate (x,y) in the (x, y, z) triple
 	for i := 1; i <= multiGates; i += partySize - corrupts {
 		prepMutex.Lock()
-		prepShares[i] = listUnFilled(network.GetParties())
+		randomMap := prepShares[i]
+		if randomMap == nil {
+			randomMap = make(map[string][]finite.Number)
+		}
+		randomMap["x"] = listUnFilled(network.GetParties())
+		randomMap["y"] = listUnFilled(network.GetParties())
+		randomMap["r"] = listUnFilled(network.GetParties())
+		randomMap["r2t"] = listUnFilled(network.GetParties())
+		prepShares[i] = randomMap
 		prepMutex.Unlock()
 	}
 
 	for i := 1; i <= multiGates; i += partySize - corrupts {
 		random := createRandomNumber(field)
-		yList := createRandomTuple(partySize, field, corrupts, i, random)
+		yList := createRandomTuple(partySize, field, corrupts, i, random, "y")
 		random = createRandomNumber(field)
-		xList := createRandomTuple(partySize, field, corrupts, i, random)
+		xList := createRandomTuple(partySize, field, corrupts, i, random, "x")
 		random = createRandomNumber(field)
-		rList := createRandomTuple(partySize, field, corrupts, i, random)
-		r2tList := createRandomTuple(2*partySize, field, corrupts, i, random)
-		panic("Only one run")
+		rList := createRandomTuple(partySize, field, corrupts, i, random, "r")
+		r2tList := createRandomTuple(2*partySize, field, corrupts, i, random, "r2t")
 		for j, _ := range yList {
 			y[j + i] = yList[j]
 			x[j + i] = xList[j]
@@ -115,8 +125,6 @@ func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir 
 		}
 	}
 	//Calculate z in the triple
-	fmt.Println("X", x)
-	fmt.Println("Y", y)
 	k := len(y)
 	for i := 1; i <= k; i++ {
 		xy := field.Mul(x[i], y[i])
@@ -132,9 +140,7 @@ func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir 
 			r2tMapMutex.Unlock()
 			if r2tMapLength >= partySize {
 				xyr := Shamir.Reconstruct(r2tMap[i])
-				//fmt.Println("ab-r", xyr)
-				//fmt.Println("r", r[i])
-				//fmt.Println("r2t", r2t[i])
+
 				//Add xyr to r to get xy=[z]_t
 				resZ := field.Add(r[i], xyr)
 				z[i] = resZ
@@ -143,14 +149,6 @@ func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir 
 		}
 
 	}
-	fmt.Println("Preparation is done!")
-	fmt.Println("x", x)
-	fmt.Println("y", y)
-	fmt.Println("z", z)
-	fmt.Println("r", r)
-	fmt.Println("r2t", r2t)
-
-	panic("im gay hehe")
 	shamir.SetTriple(x, y, z)
 }
 
@@ -176,13 +174,13 @@ func listUnFilled(size int) []finite.Number{
 }
 
 
-func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, number finite.Number) []finite.Number  {
+func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, number finite.Number, randomType string) []finite.Number  {
 	randomShares := field.ComputeShares(partySize, number)
-	distributeShares(randomShares, network.GetParties(), i)
+	distributeShares(randomShares, network.GetParties(), i, randomType)
 	for {
 		isFilledUp := false
 		prepMutex.Lock()
-		isFilledUp = listFilledUp(prepShares[i], field)
+		isFilledUp = listFilledUp(prepShares[i][randomType], field)
 		prepMutex.Unlock()
 		if isFilledUp {
 			break
@@ -190,10 +188,9 @@ func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, 
 	}
 	var xShares []finite.Number
 	prepMutex.Lock()
-	xShares = prepShares[i]
+	xShares = prepShares[i][randomType]
 	prepMutex.Unlock()
 
-	fmt.Println("The random shares from all parties for ", i, xShares)
 	return extractRandomness(xShares, matrix, field, corrupts)
 
 }
@@ -212,7 +209,7 @@ func createRandomNumber(field finite.Finite) finite.Number {
 	randomNumber.Prime = randomPrime
 	randomNumber.Binary = Binary.CreateRandomByte()
 	//Make sure random number is in the field
-	randomNumber = field.Add(randomNumber, finite.Number{Prime: big.NewInt(0)})
+	randomNumber = field.Add(randomNumber, finite.Number{Prime: big.NewInt(0), Binary: Binary.ConvertXToByte(0)})
 	return randomNumber
 }
 
@@ -276,9 +273,7 @@ func extractRandomness(x []finite.Number, matrix [][]finite.Number, field finite
 	return ye//ye[:len(x) - corrupts]
 }
 
-func distributeShares(shares []finite.Number, partySize int, gate int) {
-	fmt.Println("My random shares for ", gate , shares)
-	fmt.Println("")
+func distributeShares(shares []finite.Number, partySize int, gate int, randomType string) {
 	for party := 1; party <= partySize; party++ {
 		//fmt.Println("Im sending shares! Im party", network.GetPartyNumber())
 		shareBundle := numberbundle.NumberBundle{
@@ -287,13 +282,19 @@ func distributeShares(shares []finite.Number, partySize int, gate int) {
 			Shares: []finite.Number{shares[party-1]},
 			From:   network.GetPartyNumber(),
 			Gate: 	gate,
+			Random: randomType,
 		}
 
 		if network.GetPartyNumber() == party {
 			prepMutex.Lock()
-			list := prepShares[gate]
+			randomMap := prepShares[gate]
+			if randomMap == nil {
+				randomMap = make(map[string][]finite.Number)
+			}
+			list := randomMap[randomType]
 			list[party - 1] = shares[party-1]
-			prepShares[gate] = list
+			randomMap[randomType] = list
+			prepShares[gate] = randomMap
 			prepMutex.Unlock()
 		} else {
 			network.Send(shareBundle, party)

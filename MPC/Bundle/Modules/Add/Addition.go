@@ -49,7 +49,7 @@ func Add(secret finite.Number, sSharing secretsharing.Secret_Sharing, pSize int)
 	network.RegisterReceiver(receiver)
 
 	shares = secretSharing.ComputeShares(partySize, secret)
-	fmt.Println("My shares are:", shares)
+	//fmt.Println("My shares are:", shares)
 
 	distributeShares()
 
@@ -58,7 +58,7 @@ func Add(secret finite.Number, sSharing secretsharing.Secret_Sharing, pSize int)
 			//Udregn function
 			//TODO fjern hardcoding
 			funcResult := secretSharing.ComputeFunction(receivedShares, network.GetPartyNumber())
-			fmt.Println("funcResult", funcResult)
+			//fmt.Println("funcResult", funcResult)
 			distributeResult(funcResult)
 			break
 		}

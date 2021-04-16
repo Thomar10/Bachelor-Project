@@ -126,7 +126,6 @@ func main() {
 	}
 
 	result := secretSharing.TheOneRing(circuit, secret, preprocessing)
-	time.Sleep(10)
 	switch finiteField.(type) {
 		case Prime.Prime:
 			fmt.Println("Final result:", result.Prime)
