@@ -68,12 +68,12 @@ func (p Prime) GetSize() Finite_fields.Number {
 
 
 func (p Prime) GenerateField() Finite_fields.Number {
-	/*bigPrime, err := crand.Prime(crand.Reader, 32)
+	bigPrime, err := crand.Prime(crand.Reader, 32)
 	if err != nil {
 		panic("Unable to compute prime")
 	}
-	return Finite_fields.Number{Prime: bigPrime}*/
-	return Finite_fields.Number{Prime: big.NewInt(17)}
+	return Finite_fields.Number{Prime: bigPrime}
+
 }
 
 func (p Prime) Add(n1, n2 Finite_fields.Number) Finite_fields.Number {
