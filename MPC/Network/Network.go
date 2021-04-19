@@ -33,6 +33,7 @@ var peers []string
 //List of connections
 var connections []net.Conn
 
+var receiverMutex = &sync.Mutex{}
 var connMutex = &sync.Mutex{}
 var readyMutex = &sync.Mutex{}
 var peersMutex = &sync.Mutex{}
@@ -102,7 +103,9 @@ func Init(networkSize int) bool {
 }
 
 func RegisterReceiver(r Receiver) {
+	receiverMutex.Lock()
 	receiver = append(receiver, r)
+	receiverMutex.Unlock()
 }
 
 func GetParties() int {
@@ -232,14 +235,20 @@ func handleConnection(conn net.Conn) {
 		}
 
 		if packet.Type == "bundle" {
-			if len(receiver) == 0 {
+			receiverMutex.Lock()
+			receiverLen := len(receiver)
+			receiverMutex.Unlock()
+
+			if receiverLen == 0 {
 				fmt.Println("No receiver registered")
 				return
 			}
 			//fmt.Println("Sending packet to receivers ", packet.Bundle)
+			receiverMutex.Lock()
 			for _, r := range receiver {
 				r.Receive(packet.Bundle)
 			}
+			receiverMutex.Unlock()
 			//receiver.Receive(packet.Bundle)
 		}
 

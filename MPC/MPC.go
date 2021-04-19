@@ -19,6 +19,7 @@ import (
 	"math/big"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -33,7 +34,10 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			if match.Type == "Prime" {
 				myPartyNumber = network.GetPartyNumber()
 				createField(finite.Number{Prime: match.Prime.Prime})
+				//Placer bare mutex for at -race ikke skriger om det
+				sizeSetMutex.Lock()
 				sizeSet = true
+				sizeSetMutex.Unlock()
 			} /*else {
 				panic("Given type is unknown: "+ match.Type)
 			}*/
@@ -49,6 +53,8 @@ var sizeSet bool
 var myPartyNumber int
 var circuit Circuit.Circuit
 var preprocessing = true
+
+var sizeSetMutex = &sync.Mutex{}
 
 func main() {
 
@@ -114,7 +120,10 @@ func main() {
 
 
 	for {
-		if sizeSet {
+		sizeSetMutex.Lock()
+		sizeSetValue := sizeSet
+		sizeSetMutex.Unlock()
+		if sizeSetValue {
 			break
 		}
 	}

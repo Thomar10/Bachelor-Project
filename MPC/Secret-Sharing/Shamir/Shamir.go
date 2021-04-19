@@ -226,7 +226,10 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 		switch field.(type) {
 			case Prime.Prime:
 				for {
-					if len(resultGate) > 0 {
+					resultMutex.Lock()
+					resultLen := len(resultGate)
+					resultMutex.Unlock()
+					if resultLen > 0 {
 						break
 					}
 					if outputGates == 0 {
@@ -237,8 +240,12 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 				}
 				keys := reflect.ValueOf(resultGate).MapKeys()
 				key := keys[0]
-				if len(resultGate[(key.Interface()).(int)]) >= corrupts + 1 { //var == før
-					result = Reconstruct(resultGate[(key.Interface()).(int)])
+				resultMutex.Lock()
+				resultGateLen := len(resultGate[(key.Interface()).(int)])
+				resultGateValue := resultGate[(key.Interface()).(int)]
+				resultMutex.Unlock()
+				if resultGateLen >= corrupts + 1 { //var == før
+					result = Reconstruct(resultGateValue)
 					done = true
 				} /*else if len(resultGate[(key.Interface()).(int)]) > corrupts + 1 {
 					resultMapMutex.Lock()

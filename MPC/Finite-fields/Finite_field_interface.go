@@ -2,7 +2,6 @@ package Finite_fields
 
 import (
 	"math/big"
-	"sync"
 )
 
 type Finite interface {
@@ -20,5 +19,4 @@ type Finite interface {
 type Number struct {
 	Prime *big.Int
 	Binary []int
-	*sync.Mutex
 }

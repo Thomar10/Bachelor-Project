@@ -64,7 +64,9 @@ func (p Prime) InitSeed() {
 }
 
 func (p Prime) SetSize(f Finite_fields.Number) {
+	primeMutex.Lock()
 	primeNumber = f
+	primeMutex.Unlock()
 }
 func (p Prime) GetSize() Finite_fields.Number {
 	primeMutex.Lock()
@@ -85,9 +87,8 @@ func (p Prime) GenerateField() Finite_fields.Number {
 }
 
 func (p Prime) Add(n1, n2 Finite_fields.Number) Finite_fields.Number {
-	n1.Lock()
-	n2.Lock()
-	defer n1.Unlock(); n2.Unlock()
+	addMutex.Lock()
+	defer addMutex.Unlock()
 	x := new(big.Int).Add(n1.Prime, n2.Prime)
 	x.Mod(x, primeNumber.Prime)
 	return Finite_fields.Number{Prime: x}
@@ -95,9 +96,8 @@ func (p Prime) Add(n1, n2 Finite_fields.Number) Finite_fields.Number {
 }
 
 func (p Prime) Mul(n1, n2 Finite_fields.Number) Finite_fields.Number {
-	n1.Lock()
-	n2.Lock()
-	defer n1.Unlock(); n2.Unlock()
+	mulMutex.Lock()
+	defer mulMutex.Unlock()
 	x := new(big.Int).Mul(n1.Prime, n2.Prime)
 	x.Mod(x, primeNumber.Prime)
 	return Finite_fields.Number{Prime: x}

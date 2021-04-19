@@ -10,6 +10,7 @@ import (
 	secretsharing "MPC/Secret-Sharing"
 	"MPC/Secret-Sharing/Shamir"
 	crand "crypto/rand"
+	"fmt"
 	"github.com/google/uuid"
 	"math/big"
 	"sync"
@@ -56,6 +57,17 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 				randomMap = make(map[string][]finite.Number)
 			}
 			list := randomMap[match.Random]
+			listLen := len(list)
+			prepMutex.Unlock()
+			if listLen == 0 {
+				fmt.Println(randomMap)
+				initPrepShares(match.Gate)
+				fmt.Println(randomMap)
+			}
+			prepMutex.Lock()
+			//Tager den ud igen fordi jeg er nød til at unlock inden funktionskaldet
+			//Grundet initPrep vil have en lock på samme mutex
+			list = randomMap[match.Random]
 			list[match.From - 1] = match.Shares[0]
 			randomMap[match.Random] = list
 			prepShares[match.Gate] = randomMap
@@ -77,7 +89,19 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 	}
 }
 
-
+func initPrepShares(gate int) {
+	prepMutex.Lock()
+	randomMap := prepShares[gate]
+	if randomMap == nil {
+		randomMap = make(map[string][]finite.Number)
+	}
+	randomMap["x"] = listUnFilled(network.GetParties())
+	randomMap["y"] = listUnFilled(network.GetParties())
+	randomMap["r"] = listUnFilled(network.GetParties())
+	randomMap["r2t"] = listUnFilled(network.GetParties())
+	prepShares[gate] = randomMap
+	prepMutex.Unlock()
+}
 
 func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir secretsharing.Secret_Sharing) {
 	receiver := Receiver{}
@@ -89,17 +113,7 @@ func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir 
 	//randomTriplesNeeded := multiGates / corrupts + 1
 	//Calculate (x,y) in the (x, y, z) triple
 	for i := 1; i <= multiGates; i += partySize - corrupts {
-		prepMutex.Lock()
-		randomMap := prepShares[i]
-		if randomMap == nil {
-			randomMap = make(map[string][]finite.Number)
-		}
-		randomMap["x"] = listUnFilled(network.GetParties())
-		randomMap["y"] = listUnFilled(network.GetParties())
-		randomMap["r"] = listUnFilled(network.GetParties())
-		randomMap["r2t"] = listUnFilled(network.GetParties())
-		prepShares[i] = randomMap
-		prepMutex.Unlock()
+		initPrepShares(i)
 	}
 
 	for i := 1; i <= multiGates; i += partySize - corrupts {
