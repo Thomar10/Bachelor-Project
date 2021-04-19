@@ -73,6 +73,7 @@ func (p Prime) GenerateField() Finite_fields.Number {
 		panic("Unable to compute prime")
 	}
 	return Finite_fields.Number{Prime: bigPrime}
+	//return Finite_fields.Number{Prime: big.NewInt(17)}
 
 }
 

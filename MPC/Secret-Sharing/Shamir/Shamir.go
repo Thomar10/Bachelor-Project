@@ -53,7 +53,8 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			receivedResults[match.From] = match.Result
 			resultGate[match.Gate] = receivedResults
 			resultMutex.Unlock()
-		}else if match.Type == "ED" {
+		}else if match.Type == "EDShare" {
+			fmt.Println("Got a EDShare", match)
 			eMultMutex.Lock()
 			eMultMap := eMult[match.Gate]
 			if eMultMap == nil {
@@ -71,9 +72,15 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			dMultMap[match.From] = match.Shares[1]
 			dMult[match.Gate] = dMultMap
 			dMultMutex.Unlock()
-		} /*else {
-			panic("Given type is unknown, " + match.Type)
-		}*/
+		} else if match.Type == "EDResult" {
+			eOpenMutex.Lock()
+			eOpenMap[match.Gate] = match.Shares[0]
+			eOpenMutex.Unlock()
+
+			dOpenMutex.Lock()
+			dOpenMap[match.Gate] = match.Shares[1]
+			dOpenMutex.Unlock()
+		}
 	}
 }
 
@@ -83,8 +90,12 @@ var multMap = make(map[int]finite.Number)
 var gateMult = make(map[int]map[int]finite.Number)
 var eMult = make(map[int]map[int]finite.Number)
 var dMult = make(map[int]map[int]finite.Number)
+var eOpenMap = make(map[int]finite.Number)
+var dOpenMap = make(map[int]finite.Number)
 var eMultMutex = &sync.Mutex{}
 var dMultMutex = &sync.Mutex{}
+var eOpenMutex = &sync.Mutex{}
+var dOpenMutex = &sync.Mutex{}
 var wiresMutex = &sync.Mutex{}
 var gateMutex = &sync.Mutex{}
 var resultMutex = &sync.Mutex{}
@@ -93,6 +104,7 @@ var resultGate = make(map[int]map[int]finite.Number)
 var receivedResults = make(map[int]finite.Number)
 var corrupts = 0
 var tripleCounter = 1
+var bundleCounter = 1
 var x = make(map[int]finite.Number)
 var y = make(map[int]finite.Number)
 var z = make(map[int]finite.Number)
@@ -201,18 +213,15 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 				wiresMutex.Lock()
 				wires[gate.GateNumber] = output
 				wiresMutex.Unlock()
+				//Remove gate from circuits.gates
 				circuit.Gates = removeGate(circuit, gate, i)
-				if len(circuit.Gates) == 0 {
-					//distributeResult([]finite.Number{output}, partySize)
-				}
 				//Restart for-loop
 				break
-				//Remove gate from circuits.gates
 			}
 		}
 		var done = false
 		if len(circuit.Gates) != 0 {
-			continue//distributeResult([]finite.Number{output}, partySize)
+			continue
 		}
 		switch field.(type) {
 			case Prime.Prime:
@@ -327,36 +336,29 @@ func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize
 
 func processedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize int) finite.Number {
 	triple := getTriple()
+	//fmt.Println("Triple", triple)
+	//fmt.Println("prime", field.GetSize().Prime)
 	xt := field.Mul(triple[0], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-x
 	yt := field.Mul(triple[1], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-y
 	e := field.Add(input1, xt)//input1 - triple[0]
 	d := field.Add(input2, yt)//input2 - triple[1]
-	//Distribute e and d
-	distributeED([]finite.Number{e, d}, partySize, gate.GateNumber)
-	//Reconstruct e
+	reconstructED(e, d, partySize, gate)
+	var eOpen, dOpen finite.Number
+	fmt.Println("Waiting for eOpen and dOpen")
 	for {
-		eMultMutex.Lock()
-		eMultLength :=  len(eMult[gate.GateNumber])
-		eMultMutex.Unlock()
-		if eMultLength >= corrupts + 1 {
+		eOpenMutex.Lock()
+		eOpenValue, foundE := eOpenMap[gate.GateNumber]
+		eOpenMutex.Unlock()
+		dOpenMutex.Lock()
+		dOpenValue, foundD := dOpenMap[gate.GateNumber]
+		dOpenMutex.Unlock()
+		if foundE && foundD {
+			eOpen = eOpenValue
+			dOpen = dOpenValue
 			break
 		}
 	}
-
-	eMultMutex.Lock()
-	eMultGate := eMult[gate.GateNumber]
-	eMultMutex.Unlock()
-	eOpen := Reconstruct(eMultGate)
-	//Reconstruct d
-	for {
-		if len(dMult[gate.GateNumber]) >= corrupts + 1 {
-			break
-		}
-	}
-	dMultMutex.Lock()
-	dMultGate := dMult[gate.GateNumber]
-	dMultMutex.Unlock()
-	dOpen := Reconstruct(dMultGate)
+	fmt.Println("Done Waiting for eOpen and dOpen")
 	//Calculate ab
 	eb := field.Mul(eOpen, input2)
 	da := field.Mul(dOpen, input1)
@@ -368,6 +370,46 @@ func processedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize in
 }
 
 
+func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
+	distributeED([]finite.Number{e, d}, partySize, gate.GateNumber, false)
+	fmt.Println(bundleCounter)
+	fmt.Println("Im party", network.GetPartyNumber())
+	if bundleCounter == network.GetPartyNumber()  {
+		//Reconstruct e
+		fmt.Println("Waiting for e")
+		for {
+			eMultMutex.Lock()
+			eMultLength :=  len(eMult[gate.GateNumber])
+			eMultMutex.Unlock()
+			if eMultLength >= corrupts + 1 {
+				break
+			}
+		}
+		fmt.Println("Done Waiting for e")
+		eMultMutex.Lock()
+		eMultGate := eMult[gate.GateNumber]
+		eMultMutex.Unlock()
+		eOpen := Reconstruct(eMultGate)
+		//Reconstruct d
+		fmt.Println("Waiting for d")
+		for {
+			if len(dMult[gate.GateNumber]) >= corrupts + 1 {
+				break
+			}
+		}
+		fmt.Println("Done Waiting for d")
+		dMultMutex.Lock()
+		dMultGate := dMult[gate.GateNumber]
+		dMultMutex.Unlock()
+		dOpen := Reconstruct(dMultGate)
+		distributeED([]finite.Number{eOpen, dOpen}, partySize, gate.GateNumber, true)
+	}
+	bundleCounter++
+	if bundleCounter > partySize {
+		bundleCounter = 1
+	}
+}
+
 
 func outputSize(circuit Circuit.Circuit) int {
 	result := 0
@@ -378,24 +420,46 @@ func outputSize(circuit Circuit.Circuit) int {
 	}
 	return result
 }
-func distributeED(shares []finite.Number, partySize int, gate int) {
-	//fmt.Println("Sending ED", shares)
-	for party := 1; party <= partySize; party++ {
-		shareBundle := numberbundle.NumberBundle{
-			ID:     uuid.Must(uuid.NewRandom()).String(),
-			Type:   "ED",
-			Shares: shares,
-			From:   network.GetPartyNumber(),
-			Gate: gate,
+
+func distributeED(shares []finite.Number, partySize int, gate int, forAll bool) {
+	if forAll {
+		for party := 1; party <= partySize; party++ {
+			shareBundle := numberbundle.NumberBundle{
+				ID:     uuid.Must(uuid.NewRandom()).String(),
+				Type:   "EDResult",
+				Shares: shares,
+				From:   network.GetPartyNumber(),
+				Gate: 	gate,
+			}
+			if party == network.GetPartyNumber() {
+				eOpenMutex.Lock()
+				eOpenMap[gate] = shares[0]
+				eOpenMutex.Unlock()
+
+				dOpenMutex.Lock()
+				dOpenMap[gate] = shares[1]
+				dOpenMutex.Unlock()
+			} else {
+				network.Send(shareBundle, party)
+			}
 		}
 
-		if network.GetPartyNumber() == party {
+	}else {
+		shareBundle := numberbundle.NumberBundle{
+			ID:     uuid.Must(uuid.NewRandom()).String(),
+			Type:   "EDShare",
+			Shares: shares,
+			From:   network.GetPartyNumber(),
+			Gate:   gate,
+		}
+
+		if network.GetPartyNumber() == bundleCounter {
 			eMultMutex.Lock()
 			eMultMap := eMult[gate]
 			if eMultMap == nil {
 				eMultMap = make(map[int]finite.Number)
 			}
-			eMultMap[party] = shares[0]
+			eMultMap[bundleCounter] = shares[0]
 			eMult[gate] = eMultMap
 			eMultMutex.Unlock()
 
@@ -404,14 +468,13 @@ func distributeED(shares []finite.Number, partySize int, gate int) {
 			if dMultMap == nil {
 				dMultMap = make(map[int]finite.Number)
 			}
-			dMultMap[party] = shares[1]
+			dMultMap[bundleCounter] = shares[1]
 			dMult[gate] = dMultMap
 			dMultMutex.Unlock()
 			//receivedShares = append(receivedShares, shareSlice...)
-		}else {
-			network.Send(shareBundle, party)
+		} else {
+			network.Send(shareBundle, bundleCounter)
 		}
-
 	}
 }
 

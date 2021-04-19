@@ -48,7 +48,7 @@ var secret finite.Number
 var sizeSet bool
 var myPartyNumber int
 var circuit Circuit.Circuit
-var preprocessing = true
+var preprocessing = false
 
 func main() {
 
@@ -119,20 +119,24 @@ func main() {
 			break
 		}
 	}
+
+	startTime := time.Now()
 	if preprocessing {
 		corrupts := (partySize - 1) / 2
 		Preparation.Prepare(circuit, finiteField, corrupts, secretSharing)
-		time.Sleep(1)
 	}
+	fmt.Println("Done preprocessing")
+
 
 	result := secretSharing.TheOneRing(circuit, secret, preprocessing)
+	endTime := time.Since(startTime)
 	switch finiteField.(type) {
 		case Prime.Prime:
 			fmt.Println("Final result:", result.Prime)
 		case Binary.Binary:
 			fmt.Println("Final result:", result.Binary)
 	}
-
+	fmt.Println("The protocol took", endTime)
 
 }
 

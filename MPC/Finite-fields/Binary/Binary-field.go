@@ -2,7 +2,6 @@ package Binary
 
 import (
 	finite "MPC/Finite-fields"
-	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -92,15 +91,15 @@ func ConvertXToByte(x int) []int {
 }
 
 func calculatePolynomial(polynomial [][]int, x int) []int {
-	fmt.Println("polynomial", polynomial)
-	fmt.Println("x", x)
+	//fmt.Println("polynomial", polynomial)
+	//fmt.Println("x", x)
 	var result = make([]int, 8)
 	var xByte = ConvertXToByte(x)
 	for i := 0; i < len(polynomial); i++ {
 		result = bitAdd(bitMult(polynomial[i], bitExponent(xByte, i)), result)
 
 	}
-	fmt.Println(result)
+	//fmt.Println(result)
 	return result
 }
 
