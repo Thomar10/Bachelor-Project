@@ -5,12 +5,18 @@ import (
 	crand "crypto/rand"
 	"fmt"
 	"math/big"
+	"sync"
 )
 
 type Prime struct {
 
 }
 
+var addMutex = &sync.Mutex{}
+var mulMutex = &sync.Mutex{}
+var primeMutex =  &sync.Mutex{}
+
+var primeNumber Finite_fields.Number
 
 func (p Prime) FilledUp(numbers []Finite_fields.Number) bool {
 	for _, number := range numbers {
@@ -27,7 +33,6 @@ func (p Prime) GetConstant(constant int) Finite_fields.Number {
 	return Finite_fields.Number{Prime: big.NewInt(int64(constant))}
 }
 
-var primeNumber Finite_fields.Number
 
 func (p Prime) ComputeShares(parties int, secret Finite_fields.Number) []Finite_fields.Number {
 	// t should be less than half of connected parties t < 1/2 n
@@ -56,14 +61,16 @@ func (p Prime) ComputeShares(parties int, secret Finite_fields.Number) []Finite_
 }
 
 func (p Prime) InitSeed() {
-	//TODO find bedre plads senere eventuelt til rand seed
 }
 
 func (p Prime) SetSize(f Finite_fields.Number) {
 	primeNumber = f
 }
 func (p Prime) GetSize() Finite_fields.Number {
-	return primeNumber
+	primeMutex.Lock()
+	prime := primeNumber
+	primeMutex.Unlock()
+	return prime
 }
 
 
@@ -78,12 +85,19 @@ func (p Prime) GenerateField() Finite_fields.Number {
 }
 
 func (p Prime) Add(n1, n2 Finite_fields.Number) Finite_fields.Number {
+	n1.Lock()
+	n2.Lock()
+	defer n1.Unlock(); n2.Unlock()
 	x := new(big.Int).Add(n1.Prime, n2.Prime)
 	x.Mod(x, primeNumber.Prime)
 	return Finite_fields.Number{Prime: x}
+
 }
 
 func (p Prime) Mul(n1, n2 Finite_fields.Number) Finite_fields.Number {
+	n1.Lock()
+	n2.Lock()
+	defer n1.Unlock(); n2.Unlock()
 	x := new(big.Int).Mul(n1.Prime, n2.Prime)
 	x.Mod(x, primeNumber.Prime)
 	return Finite_fields.Number{Prime: x}

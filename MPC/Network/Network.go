@@ -32,14 +32,18 @@ type Packet struct {
 var peers []string
 //List of connections
 var connections []net.Conn
+
 var connMutex = &sync.Mutex{}
+var readyMutex = &sync.Mutex{}
+var peersMutex = &sync.Mutex{}
+var partiesMutex = &sync.Mutex{}
+
 var encoders = make(map[net.Conn]*gob.Encoder)
 var decoders = make(map[net.Conn]*gob.Decoder)
 var parties = make(map[string]net.Conn)
 var finalNetworkSize int
 var readyParties = make(map[net.Conn]bool)
 var readySent = false
-var readyMutex = &sync.Mutex{}
 var isHost bool
 var receiver []Receiver
 var myIP string
@@ -54,11 +58,6 @@ func GetPartyNumber() int {
 		}
 	}
 	panic("Could not find miself :(")
-}
-
-//TODO slet når testing er ovre
-func Peers() []string {
-	return peers
 }
 
 func Init(networkSize int) bool {
@@ -86,7 +85,9 @@ func Init(networkSize int) bool {
 	}
 
 	fmt.Println("Listening on following connection: ", myIP)
+	peersMutex.Lock()
 	peers = append(peers, myIP)
+	peersMutex.Unlock()
 
 	if err != nil {
 		fmt.Println("Could not listen for incoming connections:", err.Error())
@@ -105,11 +106,17 @@ func RegisterReceiver(r Receiver) {
 }
 
 func GetParties() int {
-	return len(connections) + 1
+	connMutex.Lock()
+	connLen := len(connections)
+	connMutex.Unlock()
+	return connLen + 1
 }
 
 func IsReady() bool {
-	return len(readyParties) + 1 == finalNetworkSize
+	readyMutex.Lock()
+	readyLen := len(readyParties)
+	readyMutex.Unlock()
+	return readyLen + 1 == finalNetworkSize
 }
 
 func sendReady() {
@@ -125,11 +132,14 @@ func sendReady() {
 	}
 
 	if isHost {
+		peersMutex.Lock()
 		packet.Connections = peers
+		peersMutex.Unlock()
 	}
 
 	fmt.Println(packet)
 
+	connMutex.Lock()
 	for _, conn := range connections {
 		encoder := encoders[conn]
 		err := encoder.Encode(packet)
@@ -138,6 +148,7 @@ func sendReady() {
 			fmt.Println("Failed to send ready", err.Error())
 		}
 	}
+	connMutex.Unlock()
 
 	fmt.Println("I am ready!")
 	readySent = true
@@ -145,9 +156,12 @@ func sendReady() {
 
 func Send(bundle bundle.Bundle, party int) {
 	//TODO make party int consistent (-1?)
+	peersMutex.Lock()
 	peer := peers[party - 1 ]
+	peersMutex.Unlock()
+	partiesMutex.Lock()
 	partyToSend, found := parties[peer]//connections[party]
-
+	partiesMutex.Unlock()
 	if !found {
 		fmt.Println("Party could not be found in parties :(")
 	}
@@ -188,7 +202,10 @@ func listen(ln net.Listener) {
 		connections = append(connections, conn)
 		connMutex.Unlock()
 
-		if len(peers) == finalNetworkSize {
+		peersMutex.Lock()
+		peersLength := len(peers)
+		peersMutex.Unlock()
+		if peersLength == finalNetworkSize {
 			sendReady()
 		}
 
@@ -228,19 +245,29 @@ func handleConnection(conn net.Conn) {
 
 		if packet.Type == "ready" {
 			if len(packet.Connections) > 0 {
+				peersMutex.Lock()
 				peers = packet.Connections
+				peersMutex.Unlock()
 			}
+			readyMutex.Lock()
 			readyParties[conn] = true
+			readyMutex.Unlock()
 		}
 	}
 }
 
 func getPeers(conns []string, sender net.Conn) {
+	connMutex.Lock()
 	senderIP := conns[0]
+	connMutex.Unlock()
+	partiesMutex.Lock()
 	parties[senderIP] = sender
+	partiesMutex.Unlock()
 	for i, ip := range conns {
 		if newIP(ip) {
+			peersMutex.Lock()
 			peers = append(peers, ip)
+			peersMutex.Unlock()
 
 			//Do not connect to connected peers own ip - we already have a connection
 			if i != 0 {
@@ -248,8 +275,10 @@ func getPeers(conns []string, sender net.Conn) {
 			}
 		}
 	}
-
-	if len(connections) + 1 == finalNetworkSize {
+	connMutex.Lock()
+	connLen := len(connections)
+	connMutex.Unlock()
+	if connLen + 1 == finalNetworkSize {
 		sendReady()
 	}
 
@@ -258,6 +287,8 @@ func getPeers(conns []string, sender net.Conn) {
 
 //Check if we already have a connection to this ip or if it is our own ip
 func newIP(ip string) bool {
+	peersMutex.Lock()
+	defer peersMutex.Unlock()
 	for _, peer := range peers {
 		if peer == ip {
 			return false
@@ -273,12 +304,15 @@ func newIP(ip string) bool {
 }
 
 func sendPeers(conn net.Conn) {
+	peersMutex.Lock()
+	peersList := peers
+	peersMutex.Unlock()
 	encoder := gob.NewEncoder(conn)
 	encoders[conn] = encoder //Add encoder to map
 	packet := Packet{
 		ID: uuid.Must(uuid.NewRandom()).String(),
 		Type: "peerlist",
-		Connections: peers,
+		Connections: peersList,
 	}
 	err := encoder.Encode(packet)
 
@@ -305,9 +339,9 @@ func connect(ipPort string) bool {
 	connections = append(connections, conn)
 	connMutex.Unlock()
 
-	//TODO Mutex?
+	partiesMutex.Lock()
 	parties[ipPort] = conn
-
+	partiesMutex.Unlock()
 	return true
 }
 

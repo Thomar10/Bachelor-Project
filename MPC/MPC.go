@@ -48,7 +48,7 @@ var secret finite.Number
 var sizeSet bool
 var myPartyNumber int
 var circuit Circuit.Circuit
-var preprocessing = false
+var preprocessing = true
 
 func main() {
 
@@ -100,7 +100,6 @@ func main() {
 		for {
 			if network.IsReady() {
 				myPartyNumber = network.GetPartyNumber()
-				fmt.Println(myPartyNumber)
 				for i := 1; i <= partySize; i++ {
 					if myPartyNumber != i {
 						network.Send(bundleType, i)

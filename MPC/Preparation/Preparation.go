@@ -26,6 +26,7 @@ type Receiver struct {
 
 }
 
+
 var matrix [][]finite.Number
 
 var x = make(map[int]finite.Number)
@@ -276,7 +277,7 @@ func createHyperMatrix(partySize int, field finite.Finite) {
 					ajakInverse := field.FindInverse(ajak, field.GetSize())
 					biakajak := field.Mul(biak, ajakInverse)
 					matrix[i][j] = field.Mul(biakajak, matrix[i][j])
-					//((b[i] - a[k]) / (a[j] - a[k]) * matrix[i][j]) % 17
+
 				}
 			}
 		}
