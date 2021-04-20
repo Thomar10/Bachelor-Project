@@ -11,23 +11,18 @@ import (
 	"MPC/Secret-Sharing/Shamir"
 	crand "crypto/rand"
 	"fmt"
-	"github.com/google/uuid"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
-
-
-
 type Preparation struct {
-
 }
 
 type Receiver struct {
-
 }
-
 
 var matrix [][]finite.Number
 
@@ -51,23 +46,20 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 	//fmt.Println("I have received bundle prep:", bundle)
 	switch match := bundle.(type) {
 	case numberbundle.NumberBundle:
-		if match.Type == "PrepShare"{
+		if match.Type == "PrepShare" {
+			fmt.Println("I have received bundle prep:", bundle)
 			prepMutex.Lock()
 			randomMap := prepShares[match.Gate]
-			if randomMap == nil {
-				randomMap = make(map[string][]finite.Number)
-			}
-			list := randomMap[match.Random]
-			listLen := len(list)
 			prepMutex.Unlock()
-			if listLen == 0 {
+			if randomMap == nil {
 				initPrepShares(match.Gate)
 			}
 			prepMutex.Lock()
 			//Tager den ud igen fordi jeg er nød til at unlock inden funktionskaldet
 			//Grundet initPrep vil have en lock på samme mutex
-			list = randomMap[match.Random]
-			list[match.From - 1] = match.Shares[0]
+			randomMap = prepShares[match.Gate]
+			list := randomMap[match.Random]
+			list[match.From-1] = match.Shares[0]
 			randomMap[match.Random] = list
 			prepShares[match.Gate] = randomMap
 			prepMutex.Unlock()
@@ -102,18 +94,16 @@ func initPrepShares(gate int) {
 	prepMutex.Unlock()
 }
 
-func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir secretsharing.Secret_Sharing) {
+func RegisterReceiver() {
 	receiver := Receiver{}
 	network.RegisterReceiver(receiver)
+}
 
+func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir secretsharing.Secret_Sharing) {
+	fmt.Println("Im party!", network.GetPartyNumber())
 	partySize := circuit.PartySize
 	createHyperMatrix(partySize, field)
 	multiGates := countMultiGates(circuit)
-	//randomTriplesNeeded := multiGates / corrupts + 1
-	//Calculate (x,y) in the (x, y, z) triple
-	for i := 1; i <= multiGates; i += partySize - corrupts {
-		initPrepShares(i)
-	}
 
 	for i := 1; i <= multiGates; i += partySize - corrupts {
 		random := createRandomNumber(field)
@@ -125,10 +115,10 @@ func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir 
 		rList := createRandomTuple(partySize, field, corrupts, i, random, "r")
 		r2tList := createRandomTuple(2*partySize, field, corrupts, i, random, "r2t")
 		for j, _ := range yList {
-			y[j + i] = yList[j]
-			x[j + i] = xList[j]
-			r[j + i] = rList[j]
-			r2t[j + i] = r2tList[j]
+			y[j+i] = yList[j]
+			x[j+i] = xList[j]
+			r[j+i] = rList[j]
+			r2t[j+i] = r2tList[j]
 		}
 
 		//y = append(y, createRandomTuple(partySize, field, corrupts)...)
@@ -149,7 +139,7 @@ func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir 
 	for i := 1; i <= k; i++ {
 		xy := field.Mul(x[i], y[i])
 		r2tInv := field.Mul(r2t[i], finite.Number{
-			Prime: big.NewInt(-1),
+			Prime:  big.NewInt(-1),
 			Binary: []int{0, 0, 0, 0, 0, 0, 0, 1}, //-1
 		})
 		xyr2t := field.Add(xy, r2tInv)
@@ -170,7 +160,7 @@ func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir 
 
 func reconstructR2T(xyr2t finite.Number, partySize int, i int) {
 	distributeR2T(xyr2t, partySize, i, false)
-	if bundleCounter == network.GetPartyNumber()  {
+	if bundleCounter == network.GetPartyNumber() {
 		for {
 			r2tMapMutex.Lock()
 			r2tMapLength := len(r2tMap[i])
@@ -198,19 +188,18 @@ func countMultiGates(circuit Circuit.Circuit) int {
 	return result
 }
 
-func listUnFilled(size int) []finite.Number{
+func listUnFilled(size int) []finite.Number {
 	list := make([]finite.Number, size)
 	for i := 0; i < size; i++ {
 		list[i] = finite.Number{
-			Prime: big.NewInt(-1),
+			Prime:  big.NewInt(-1),
 			Binary: []int{-1},
 		}
 	}
 	return list
 }
 
-
-func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, number finite.Number, randomType string) []finite.Number  {
+func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, number finite.Number, randomType string) []finite.Number {
 	startTime := time.Now()
 	randomShares := field.ComputeShares(partySize, number)
 	distributeShares(randomShares, network.GetParties(), i, randomType)
@@ -237,7 +226,6 @@ func listFilledUp(list []finite.Number, field finite.Finite) bool {
 	return field.FilledUp(list)
 }
 
-
 func createRandomNumber(field finite.Finite) finite.Number {
 	randomNumber := finite.Number{}
 	randomPrime, err := crand.Prime(crand.Reader, 32)
@@ -251,18 +239,16 @@ func createRandomNumber(field finite.Finite) finite.Number {
 	return randomNumber
 }
 
-
-
 func createHyperMatrix(partySize int, field finite.Finite) {
 	a := make([]finite.Number, partySize)
 	b := make([]finite.Number, partySize)
 	for i := 1; i <= partySize; i++ {
-		a[i - 1] = finite.Number{
-			Prime: big.NewInt(int64(i)),
+		a[i-1] = finite.Number{
+			Prime:  big.NewInt(int64(i)),
 			Binary: Binary.ConvertXToByte(i),
 		}
-		b[i - 1] = finite.Number{
-			Prime: big.NewInt(int64(i + partySize + 1)),
+		b[i-1] = finite.Number{
+			Prime:  big.NewInt(int64(i + partySize + 1)),
 			Binary: Binary.ConvertXToByte(i + partySize + 1),
 		}
 	}
@@ -271,7 +257,7 @@ func createHyperMatrix(partySize int, field finite.Finite) {
 		matrix[i] = make([]finite.Number, partySize)
 		for j, _ := range matrix {
 			matrix[i][j] = finite.Number{
-				Prime: big.NewInt( 1),
+				Prime:  big.NewInt(1),
 				Binary: Binary.ConvertXToByte(1),
 			}
 		}
@@ -281,10 +267,10 @@ func createHyperMatrix(partySize int, field finite.Finite) {
 			for k := 0; k < partySize; k++ {
 				if k == j {
 					continue
-				}else {
+				} else {
 					//ak-neg
 					ak := field.Add(a[k], finite.Number{
-						Prime: field.GetSize().Prime,
+						Prime:  field.GetSize().Prime,
 						Binary: Binary.ConvertXToByte(0),
 					})
 					biak := field.Add(b[i], ak)
@@ -299,7 +285,7 @@ func createHyperMatrix(partySize int, field finite.Finite) {
 	}
 }
 
-func extractRandomness(x []finite.Number, matrix [][]finite.Number, field finite.Finite, corrupts int) []finite.Number{
+func extractRandomness(x []finite.Number, matrix [][]finite.Number, field finite.Finite, corrupts int) []finite.Number {
 	ye := make([]finite.Number, len(x))
 	for i := 0; i < len(matrix); i++ {
 		ye[i] = finite.Number{Prime: big.NewInt(0), Binary: Binary.ConvertXToByte(0)}
@@ -308,7 +294,7 @@ func extractRandomness(x []finite.Number, matrix [][]finite.Number, field finite
 			//y[i] = y[i] + matrix[i][j] * x[j]
 		}
 	}
-	return ye//ye[:len(x) - corrupts]
+	return ye //ye[:len(x) - corrupts]
 }
 
 func distributeShares(shares []finite.Number, partySize int, gate int, randomType string) {
@@ -319,22 +305,26 @@ func distributeShares(shares []finite.Number, partySize int, gate int, randomTyp
 			Type:   "PrepShare",
 			Shares: []finite.Number{shares[party-1]},
 			From:   network.GetPartyNumber(),
-			Gate: 	gate,
+			Gate:   gate,
 			Random: randomType,
 		}
 
 		if network.GetPartyNumber() == party {
 			prepMutex.Lock()
 			randomMap := prepShares[gate]
+			prepMutex.Unlock()
 			if randomMap == nil {
-				randomMap = make(map[string][]finite.Number)
+				initPrepShares(gate)
 			}
+			prepMutex.Lock()
+			randomMap = prepShares[gate]
 			list := randomMap[randomType]
-			list[party - 1] = shares[party-1]
+			list[party-1] = shares[party-1]
 			randomMap[randomType] = list
 			prepShares[gate] = randomMap
 			prepMutex.Unlock()
 		} else {
+			fmt.Println("Sending packing to ", party, shareBundle)
 			network.Send(shareBundle, party)
 		}
 	}
@@ -348,7 +338,7 @@ func distributeR2T(share finite.Number, partySize int, gate int, forAll bool) {
 				Type:   "R2TResult",
 				Shares: []finite.Number{share},
 				From:   network.GetPartyNumber(),
-				Gate: 	gate,
+				Gate:   gate,
 			}
 
 			if network.GetPartyNumber() == party {
@@ -359,13 +349,13 @@ func distributeR2T(share finite.Number, partySize int, gate int, forAll bool) {
 				network.Send(shareBundle, party)
 			}
 		}
-	}else {
+	} else {
 		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
 			Type:   "R2TShare",
 			Shares: []finite.Number{share},
 			From:   network.GetPartyNumber(),
-			Gate: 	gate,
+			Gate:   gate,
 		}
 
 		if network.GetPartyNumber() == bundleCounter {

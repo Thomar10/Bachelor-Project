@@ -10,11 +10,12 @@ import (
 	network "MPC/Network"
 	_ "crypto/rand"
 	"fmt"
-	"github.com/google/uuid"
 	"math/big"
 	"reflect"
 	"sort"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 type Shamir struct {
@@ -141,15 +142,17 @@ func (s Shamir) SetTriple(xMap, yMap, zMap map[int]finite.Number) {
 	z = zMap
 }
 
+func (s Shamir) RegisterReceiver() {
+	receiver := Receiver{}
+
+	network.RegisterReceiver(receiver)
+}
 
 
 func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, preprocessed bool) finite.Number {
 	corrupts = (network.GetParties() - 1) / 2
 	partySize := network.GetParties()
 
-	receiver := Receiver{}
-
-	network.RegisterReceiver(receiver)
 
 
 	var result finite.Number

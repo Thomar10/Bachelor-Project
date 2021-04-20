@@ -14,33 +14,33 @@ import (
 	Simple_Sharing "MPC/Secret-Sharing/Simple-Sharing"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"io/ioutil"
 	"math/big"
 	"os"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Receiver struct {
-
 }
 
 func (r Receiver) Receive(bundle bundle.Bundle) {
 	//fmt.Println("I have received bundle:", bundle)
 	switch match := bundle.(type) {
-		case numberbundle.NumberBundle:
-			if match.Type == "Prime" {
-				myPartyNumber = network.GetPartyNumber()
-				createField(finite.Number{Prime: match.Prime.Prime})
-				//Placer bare mutex for at -race ikke skriger om det
-				sizeSetMutex.Lock()
-				sizeSet = true
-				sizeSetMutex.Unlock()
-			} /*else {
-				panic("Given type is unknown: "+ match.Type)
-			}*/
+	case numberbundle.NumberBundle:
+		if match.Type == "Prime" {
+			myPartyNumber = network.GetPartyNumber()
+			createField(finite.Number{Prime: match.Prime.Prime})
+			//Placer bare mutex for at -race ikke skriger om det
+			sizeSetMutex.Lock()
+			sizeSet = true
+			sizeSetMutex.Unlock()
+		} /*else {
+			panic("Given type is unknown: "+ match.Type)
+		}*/
 	}
 }
 
@@ -63,19 +63,19 @@ func main() {
 	var sec string
 	if len(os.Args) > 2 {
 		sec = os.Args[2]
-	}else {
+	} else {
 		sec = "-1"
 	}
 	if circuit.SecretSharing == "Shamir" {
 		secretSharing = Shamir.Shamir{}
-	}else {
+	} else {
 		secretSharing = Simple_Sharing.Simple_Sharing{}
 	}
 	if circuit.Field == "Prime" {
 		finiteField = Prime.Prime{}
 		s, _ := strconv.Atoi(sec)
 		secret = finite.Number{Prime: big.NewInt(int64(s))}
-	}else {
+	} else {
 		finiteField = Binary.Binary{}
 		secByte := make([]int, len(sec))
 		for i, r := range sec {
@@ -87,17 +87,18 @@ func main() {
 	finiteField.InitSeed()
 	bundleType = numberbundle.NumberBundle{}
 
-
 	receiver := Receiver{}
 	network.RegisterReceiver(receiver)
+	Preparation.RegisterReceiver()
+	secretSharing.RegisterReceiver()
 	isFirst := network.Init(partySize)
 	if isFirst {
 		finiteSize := finiteField.GenerateField()
 		switch bundleType.(type) {
 		case numberbundle.NumberBundle:
 			bundleType = numberbundle.NumberBundle{
-				ID: uuid.Must(uuid.NewRandom()).String(),
-				Type: "Prime",
+				ID:    uuid.Must(uuid.NewRandom()).String(),
+				Type:  "Prime",
 				Prime: finiteSize,
 			}
 		default:
@@ -118,7 +119,6 @@ func main() {
 		sizeSet = true
 	}
 
-
 	for {
 		sizeSetMutex.Lock()
 		sizeSetValue := sizeSet
@@ -135,14 +135,13 @@ func main() {
 	}
 	fmt.Println("Done preprocessing")
 
-
 	result := secretSharing.TheOneRing(circuit, secret, preprocessing)
 	endTime := time.Since(startTime)
 	switch finiteField.(type) {
-		case Prime.Prime:
-			fmt.Println("Final result:", result.Prime)
-		case Binary.Binary:
-			fmt.Println("Final result:", result.Binary)
+	case Prime.Prime:
+		fmt.Println("Final result:", result.Prime)
+	case Binary.Binary:
+		fmt.Println("Final result:", result.Binary)
 	}
 	fmt.Println("The protocol took", endTime)
 

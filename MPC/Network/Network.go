@@ -22,14 +22,15 @@ type Receiver interface {
 }
 
 type Packet struct {
-	ID string
-	Type string
+	ID          string
+	Type        string
 	Connections []string
-	Bundle bundle.Bundle
+	Bundle      bundle.Bundle
 }
 
 //List of IPs
 var peers []string
+
 //List of connections
 var connections []net.Conn
 
@@ -51,7 +52,6 @@ var myIP string
 
 var debug = false
 
-
 func GetPartyNumber() int {
 	for i, p := range peers {
 		if p == myIP {
@@ -71,7 +71,6 @@ func Init(networkSize int) bool {
 	fmt.Print("Ip and port of a peer on the network >")
 	ipPort, _ := reader.ReadString('\n')
 	ipPort = strings.TrimSpace(ipPort)
-
 
 	ln, err := net.Listen("tcp", ":40404")
 	if debug {
@@ -119,7 +118,7 @@ func IsReady() bool {
 	readyMutex.Lock()
 	readyLen := len(readyParties)
 	readyMutex.Unlock()
-	return readyLen + 1 == finalNetworkSize
+	return readyLen+1 == finalNetworkSize
 }
 
 func sendReady() {
@@ -130,7 +129,7 @@ func sendReady() {
 	}
 
 	packet := Packet{
-		ID: uuid.Must(uuid.NewRandom()).String(),
+		ID:   uuid.Must(uuid.NewRandom()).String(),
 		Type: "ready",
 	}
 
@@ -166,17 +165,17 @@ func sendReady() {
 func Send(bundle bundle.Bundle, party int) {
 	//TODO make party int consistent (-1?)
 	peersMutex.Lock()
-	peer := peers[party - 1 ]
+	peer := peers[party-1]
 	peersMutex.Unlock()
 	partiesMutex.Lock()
-	partyToSend, found := parties[peer]//connections[party]
+	partyToSend, found := parties[peer] //connections[party]
 	partiesMutex.Unlock()
 	if !found {
 		fmt.Println("Party could not be found in parties :(")
 	}
 	packet := Packet{
-		ID: uuid.Must(uuid.NewRandom()).String(),
-		Type: "bundle",
+		ID:     uuid.Must(uuid.NewRandom()).String(),
+		Type:   "bundle",
 		Bundle: bundle,
 	}
 	connMutex.Lock()
@@ -255,6 +254,7 @@ func handleConnection(conn net.Conn) {
 			for _, r := range receiver {
 				r.Receive(packet.Bundle)
 			}
+			fmt.Println("Got the following packet!", packet.Bundle)
 			receiverMutex.Unlock()
 			//receiver.Receive(packet.Bundle)
 		}
@@ -294,7 +294,7 @@ func getPeers(conns []string, sender net.Conn) {
 	connMutex.Lock()
 	connLen := len(connections)
 	connMutex.Unlock()
-	if connLen + 1 == finalNetworkSize {
+	if connLen+1 == finalNetworkSize {
 		sendReady()
 	}
 
@@ -331,8 +331,8 @@ func sendPeers(conn net.Conn) {
 	}
 	connMutex.Unlock()
 	packet := Packet{
-		ID: uuid.Must(uuid.NewRandom()).String(),
-		Type: "peerlist",
+		ID:          uuid.Must(uuid.NewRandom()).String(),
+		Type:        "peerlist",
 		Connections: peersList,
 	}
 	err := encoder.Encode(packet)
@@ -381,9 +381,8 @@ func getLocalIP() string {
 	return localAddr.IP.String()
 }
 
-
 func getPublicIP() string {
-	url := "https://api.ipify.org?format=text"	// we are using a public IP API, we're using ipify here, below are some others
+	url := "https://api.ipify.org?format=text" // we are using a public IP API, we're using ipify here, below are some others
 	// https://www.ipify.org
 	// http://myexternalip.com
 	// http://api.ident.me
@@ -400,8 +399,3 @@ func getPublicIP() string {
 	}
 	return string(ip)
 }
-
-
-
-
-
