@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"math/big"
 	"sync"
+	"time"
 )
 
 
@@ -212,6 +213,7 @@ func listUnFilled(size int) []finite.Number{
 
 
 func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, number finite.Number, randomType string) []finite.Number  {
+	startTime := time.Now()
 	randomShares := field.ComputeShares(partySize, number)
 	distributeShares(randomShares, network.GetParties(), i, randomType)
 	for {
@@ -228,8 +230,9 @@ func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, 
 	xShares = prepShares[i][randomType]
 	prepMutex.Unlock()
 
-	return extractRandomness(xShares, matrix, field, corrupts)
-
+	randomness := extractRandomness(xShares, matrix, field, corrupts)
+	fmt.Println("Create random tuple took:", time.Since(startTime))
+	return randomness
 }
 
 func listFilledUp(list []finite.Number, field finite.Finite) bool {

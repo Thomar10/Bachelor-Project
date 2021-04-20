@@ -144,7 +144,13 @@ func sendReady() {
 
 	connMutex.Lock()
 	for _, conn := range connections {
-		encoder := encoders[conn]
+		encoder, found := encoders[conn]
+
+		if !found {
+			encoder = gob.NewEncoder(conn)
+			encoders[conn] = encoder
+		}
+
 		err := encoder.Encode(packet)
 
 		if err != nil {
@@ -316,8 +322,11 @@ func sendPeers(conn net.Conn) {
 	peersMutex.Lock()
 	peersList := peers
 	peersMutex.Unlock()
-	encoder := gob.NewEncoder(conn)
-	encoders[conn] = encoder //Add encoder to map
+	encoder, found := encoders[conn]
+	if !found {
+		encoder = gob.NewEncoder(conn)
+		encoders[conn] = encoder //Add encoder to map
+	}
 	packet := Packet{
 		ID: uuid.Must(uuid.NewRandom()).String(),
 		Type: "peerlist",
