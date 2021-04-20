@@ -10,7 +10,6 @@ import (
 	secretsharing "MPC/Secret-Sharing"
 	"MPC/Secret-Sharing/Shamir"
 	crand "crypto/rand"
-	"fmt"
 	"github.com/google/uuid"
 	"math/big"
 	"sync"
@@ -61,9 +60,7 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			listLen := len(list)
 			prepMutex.Unlock()
 			if listLen == 0 {
-				fmt.Println(randomMap)
 				initPrepShares(match.Gate)
-				fmt.Println(randomMap)
 			}
 			prepMutex.Lock()
 			//Tager den ud igen fordi jeg er nød til at unlock inden funktionskaldet

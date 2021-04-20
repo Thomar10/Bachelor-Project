@@ -49,7 +49,7 @@ var isHost bool
 var receiver []Receiver
 var myIP string
 
-var debug = true
+var debug = false
 
 
 func GetPartyNumber() int {
@@ -179,8 +179,9 @@ func Send(bundle bundle.Bundle, party int) {
 		Type: "bundle",
 		Bundle: bundle,
 	}
-
+	connMutex.Lock()
 	encoder := encoders[partyToSend]
+	connMutex.Unlock()
 	//encoder := gob.NewEncoder(partyToSend)
 
 	err := encoder.Encode(packet)
@@ -322,11 +323,13 @@ func sendPeers(conn net.Conn) {
 	peersMutex.Lock()
 	peersList := peers
 	peersMutex.Unlock()
+	connMutex.Lock()
 	encoder, found := encoders[conn]
 	if !found {
 		encoder = gob.NewEncoder(conn)
 		encoders[conn] = encoder //Add encoder to map
 	}
+	connMutex.Unlock()
 	packet := Packet{
 		ID: uuid.Must(uuid.NewRandom()).String(),
 		Type: "peerlist",
