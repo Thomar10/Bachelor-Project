@@ -31,6 +31,7 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 	//fmt.Println("I have received bundle shamir:", bundle)
 	switch match := bundle.(type) {
 	case numberbundle.NumberBundle:
+		//fmt.Println("Received bundle:", bundle)
 		if match.Type == "Share"{
 			//fmt.Println("I got share", match)
 			wiresMutex.Lock()
@@ -55,7 +56,7 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			resultGate[match.Gate] = receivedResults
 			resultMutex.Unlock()
 		}else if match.Type == "EDShare" {
-			fmt.Println("Got a EDShare", match)
+			//fmt.Println("Got a EDShare", match)
 			eMultMutex.Lock()
 			eMultMap := eMult[match.Gate]
 			if eMultMap == nil {
@@ -180,7 +181,9 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 			input1, found1 := wires[gate.Input_one]
 			input2, found2 := wires[gate.Input_two]
 			wiresMutex.Unlock()
+			//fmt.Println(found1 && found2)
 			if found1 && found2 || found1 && gate.Input_two == 0 {
+				//fmt.Println("Wires:", wires)
 				fmt.Println("Gate ready")
 				fmt.Println(gate)
 				//do operation
@@ -354,7 +357,7 @@ func processedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize in
 	d := field.Add(input2, yt)//input2 - triple[1]
 	reconstructED(e, d, partySize, gate)
 	var eOpen, dOpen finite.Number
-	fmt.Println("Waiting for eOpen and dOpen")
+	//fmt.Println("Waiting for eOpen and dOpen")
 	for {
 		eOpenMutex.Lock()
 		eOpenValue, foundE := eOpenMap[gate.GateNumber]
@@ -368,7 +371,7 @@ func processedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize in
 			break
 		}
 	}
-	fmt.Println("Done Waiting for eOpen and dOpen")
+	//fmt.Println("Done Waiting for eOpen and dOpen")
 	//Calculate ab
 	eb := field.Mul(eOpen, input2)
 	da := field.Mul(dOpen, input1)
@@ -382,11 +385,11 @@ func processedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize in
 
 func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
 	distributeED([]finite.Number{e, d}, partySize, gate.GateNumber, false)
-	fmt.Println(bundleCounter)
-	fmt.Println("Im party", network.GetPartyNumber())
+	//fmt.Println(bundleCounter)
+	//fmt.Println("Im party", network.GetPartyNumber())
 	if bundleCounter == network.GetPartyNumber()  {
 		//Reconstruct e
-		fmt.Println("Waiting for e")
+		//fmt.Println("Waiting for e")
 		for {
 			eMultMutex.Lock()
 			eMultLength :=  len(eMult[gate.GateNumber])
@@ -395,19 +398,19 @@ func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
 				break
 			}
 		}
-		fmt.Println("Done Waiting for e")
+		//fmt.Println("Done Waiting for e")
 		eMultMutex.Lock()
 		eMultGate := eMult[gate.GateNumber]
 		eMultMutex.Unlock()
 		eOpen := Reconstruct(eMultGate)
 		//Reconstruct d
-		fmt.Println("Waiting for d")
+		//fmt.Println("Waiting for d")
 		for {
 			if len(dMult[gate.GateNumber]) >= corrupts + 1 {
 				break
 			}
 		}
-		fmt.Println("Done Waiting for d")
+		//fmt.Println("Done Waiting for d")
 		dMultMutex.Lock()
 		dMultGate := dMult[gate.GateNumber]
 		dMultMutex.Unlock()

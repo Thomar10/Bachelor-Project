@@ -52,7 +52,7 @@ var secret finite.Number
 var sizeSet bool
 var myPartyNumber int
 var circuit Circuit.Circuit
-var preprocessing = true
+var preprocessing = false
 
 var sizeSetMutex = &sync.Mutex{}
 
@@ -81,6 +81,11 @@ func main() {
 		for i, r := range sec {
 			secByte[i], _ = strconv.Atoi(string(r))
 		}
+
+		if sec == "-1" {
+			secByte = make([]int, 0)
+		}
+
 		secret = finite.Number{Binary: secByte}
 	}
 	partySize = circuit.PartySize
@@ -128,13 +133,13 @@ func main() {
 		}
 	}
 
-	startTime := time.Now()
 	if preprocessing {
 		corrupts := (partySize - 1) / 2
 		Preparation.Prepare(circuit, finiteField, corrupts, secretSharing)
 	}
 	fmt.Println("Done preprocessing")
 
+	startTime := time.Now()
 	result := secretSharing.TheOneRing(circuit, secret, preprocessing)
 	endTime := time.Since(startTime)
 	switch finiteField.(type) {

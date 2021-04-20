@@ -254,7 +254,7 @@ func handleConnection(conn net.Conn) {
 			for _, r := range receiver {
 				r.Receive(packet.Bundle)
 			}
-			fmt.Println("Got the following packet!", packet.Bundle)
+			//fmt.Println("Got the following packet!", packet.Bundle)
 			receiverMutex.Unlock()
 			//receiver.Receive(packet.Bundle)
 		}

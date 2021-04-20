@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -47,7 +46,7 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 	switch match := bundle.(type) {
 	case numberbundle.NumberBundle:
 		if match.Type == "PrepShare" {
-			fmt.Println("I have received bundle prep:", bundle)
+			//fmt.Println("I have received bundle prep:", bundle)
 			prepMutex.Lock()
 			randomMap := prepShares[match.Gate]
 			prepMutex.Unlock()
@@ -200,7 +199,6 @@ func listUnFilled(size int) []finite.Number {
 }
 
 func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, number finite.Number, randomType string) []finite.Number {
-	startTime := time.Now()
 	randomShares := field.ComputeShares(partySize, number)
 	distributeShares(randomShares, network.GetParties(), i, randomType)
 	for {
@@ -218,7 +216,6 @@ func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, 
 	prepMutex.Unlock()
 
 	randomness := extractRandomness(xShares, matrix, field, corrupts)
-	fmt.Println("Create random tuple took:", time.Since(startTime))
 	return randomness
 }
 
@@ -324,7 +321,6 @@ func distributeShares(shares []finite.Number, partySize int, gate int, randomTyp
 			prepShares[gate] = randomMap
 			prepMutex.Unlock()
 		} else {
-			fmt.Println("Sending packing to ", party, shareBundle)
 			network.Send(shareBundle, party)
 		}
 	}
