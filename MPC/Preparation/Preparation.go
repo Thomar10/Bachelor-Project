@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"math/big"
 	"sync"
+	"time"
 )
 
 
@@ -33,18 +34,36 @@ var matrix [][]finite.Number
 var x = make(map[int]finite.Number)
 var y = make(map[int]finite.Number)
 var z = make(map[int]finite.Number)
-
 var r = make(map[int]finite.Number)
 var r2t = make(map[int]finite.Number)
 
+var xList = make(map[int][]finite.Number)
+var yList = make(map[int][]finite.Number)
+var rList = make(map[int][]finite.Number)
+var r2tList = make(map[int][]finite.Number)
+
+
+
 var prepMutex = &sync.Mutex{}
+var xMutex = &sync.Mutex{}
+var yMutex = &sync.Mutex{}
+var zMutex = &sync.Mutex{}
+var rMutex = &sync.Mutex{}
+var r2tMutex = &sync.Mutex{}
+
+var xListMutex = &sync.Mutex{}
+var yListMutex = &sync.Mutex{}
+var rListMutex = &sync.Mutex{}
+var r2tListMutex = &sync.Mutex{}
+
+
 var prepShares = make(map[int]map[string][]finite.Number)
 var r2tShares = make(map[int]finite.Number)
 var r2tMapMutex = &sync.Mutex{}
 var r2tMap = make(map[int]map[int]finite.Number)
 var r2tOpenMutex = &sync.Mutex{}
 var r2tOpen = make(map[int]finite.Number)
-var bundleCounter = 1
+
 
 func (r Receiver) Receive(bundle bundle.Bundle) {
 	//fmt.Println("I have received bundle prep:", bundle)
@@ -60,9 +79,7 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			listLen := len(list)
 			prepMutex.Unlock()
 			if listLen == 0 {
-				fmt.Println(randomMap)
-				initPrepShares(match.Gate)
-				fmt.Println(randomMap)
+				go initPrepShares(match.Gate)
 			}
 			prepMutex.Lock()
 			//Tager den ud igen fordi jeg er nød til at unlock inden funktionskaldet
@@ -108,85 +125,166 @@ func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir 
 	network.RegisterReceiver(receiver)
 
 	partySize := circuit.PartySize
-	createHyperMatrix(partySize, field)
 	multiGates := countMultiGates(circuit)
+	k := 0
 	//randomTriplesNeeded := multiGates / corrupts + 1
+	for i := 1; i <= multiGates; i += partySize - corrupts {
+		go initPrepShares(i)
+		k++
+	}
+
+	createHyperMatrix(partySize, field)
+
+
 	//Calculate (x,y) in the (x, y, z) triple
-	for i := 1; i <= multiGates; i += partySize - corrupts {
-		initPrepShares(i)
-	}
+
 
 	for i := 1; i <= multiGates; i += partySize - corrupts {
-		random := createRandomNumber(field)
-		yList := createRandomTuple(partySize, field, corrupts, i, random, "y")
-		random = createRandomNumber(field)
-		xList := createRandomTuple(partySize, field, corrupts, i, random, "x")
-		random = createRandomNumber(field)
-		//fmt.Println("Random number", random)
-		rList := createRandomTuple(partySize, field, corrupts, i, random, "r")
-		r2tList := createRandomTuple(2*partySize, field, corrupts, i, random, "r2t")
-		for j, _ := range yList {
-			y[j + i] = yList[j]
-			x[j + i] = xList[j]
-			r[j + i] = rList[j]
-			r2t[j + i] = r2tList[j]
-		}
-
-		//y = append(y, createRandomTuple(partySize, field, corrupts)...)
-		//x = append(x, createRandomTuple(partySize, field, corrupts)...)
-
-		//r = append(y, createRandomTuple(partySize, field, corrupts)...)
-		//r2t = append(x, createRandomTuple(2*partySize, field, corrupts)...)
+		go generateTripleValues(field, partySize, corrupts, i)
 	}
 
-	//Making sure there is enough y's
+
+	//Calculate z in the triple
+	for i := 1; i <= k * (partySize - corrupts); i++ {
+		go calculateZ(field, i, partySize)
+	}
+
+	fmt.Println("Waiting for triple")
 	for {
-		if len(y) >= multiGates {
+		zMutex.Lock()
+		zLen := len(z)
+		zMutex.Unlock()
+		if zLen >= k * (partySize - corrupts) {
 			break
 		}
 	}
-	//Calculate z in the triple
-	k := len(y)
-	for i := 1; i <= k; i++ {
-		xy := field.Mul(x[i], y[i])
-		r2tInv := field.Mul(r2t[i], finite.Number{
-			Prime: big.NewInt(-1),
-			Binary: []int{0, 0, 0, 0, 0, 0, 0, 1}, //-1
-		})
-		xyr2t := field.Add(xy, r2tInv)
-		reconstructR2T(xyr2t, partySize, i)
-		for {
-			r2tOpenMutex.Lock()
-			xyr, found := r2tOpen[i]
-			r2tOpenMutex.Unlock()
-			if found {
-				resZ := field.Add(r[i], xyr)
-				z[i] = resZ
-				break
-			}
+	fmt.Println("Got all triples")
+	shamir.SetTriple(x, y, z)
+}
+
+func calculateZ(field finite.Finite, i int, partySize int) {
+	startTimee := time.Now()
+	var xValue, yValue finite.Number
+	for {
+		xMutex.Lock()
+		xVal, foundX := x[i]
+		xMutex.Unlock()
+		yMutex.Lock()
+		yVal, foundY := y[i]
+		yMutex.Unlock()
+		if foundX && foundY {
+			xValue = xVal
+			yValue = yVal
+			break
 		}
 	}
-	shamir.SetTriple(x, y, z)
+
+	xy := field.Mul(xValue, yValue)
+	var r2tValue finite.Number
+	for {
+		r2tMutex.Lock()
+		r2tVal, found := r2t[i]
+		fmt.Println("found r2tVal", found)
+		r2tMutex.Unlock()
+		if found {
+			r2tValue = r2tVal
+			break
+		}
+	}
+
+	r2tInv := field.Mul(r2tValue, finite.Number{
+		Prime:  big.NewInt(-1),
+		Binary: []int{0, 0, 0, 0, 0, 0, 0, 1}, //-1
+	})
+	xyr2t := field.Add(xy, r2tInv)
+	reconstructR2T(xyr2t, partySize, i)
+	fmt.Println("have reconstructed xyr2t")
+	for {
+		r2tOpenMutex.Lock()
+		xyr, found := r2tOpen[i]
+		r2tOpenMutex.Unlock()
+		rMutex.Lock()
+		rValue, foundR := r[i]
+		rMutex.Unlock()
+		if found && foundR {
+			resZ := field.Add(rValue, xyr)
+			zMutex.Lock()
+			z[i] = resZ
+			zMutex.Unlock()
+			break
+		}
+	}
+	fmt.Println("It took", time.Since(startTimee), "to calculate Z")
+}
+
+func generateTripleValues(field finite.Finite, partySize int, corrupts int, i int) {
+	startTime := time.Now()
+	var wg sync.WaitGroup
+	random := createRandomNumber(field)
+	wg.Add(1)
+	go createRandomTuple(partySize, field, corrupts, i, random, "y", &wg)
+	random = createRandomNumber(field)
+	wg.Add(1)
+	go createRandomTuple(partySize, field, corrupts, i, random, "x", &wg)
+	random = createRandomNumber(field)
+	wg.Add(1)
+	go createRandomTuple(partySize, field, corrupts, i, random, "r", &wg)
+	wg.Add(1)
+	go createRandomTuple(2*partySize, field, corrupts, i, random, "r2t", &wg)
+	wg.Wait()
+
+	yListMutex.Lock()
+	yListLen := len(yList[i])
+	yListMutex.Unlock()
+	for j := 0; j < yListLen; j ++ {
+		yListMutex.Lock()
+		yListValue := yList[i][j]
+		yListMutex.Unlock()
+		yMutex.Lock()
+		y[j+i] = yListValue
+		yMutex.Unlock()
+
+		xListMutex.Lock()
+		xListValue := xList[i][j]
+		xListMutex.Unlock()
+		xMutex.Lock()
+		x[j+i] = xListValue
+		xMutex.Unlock()
+
+		rListMutex.Lock()
+		rListValue := rList[i][j]
+		rListMutex.Unlock()
+		rMutex.Lock()
+		r[j+i] = rListValue
+		rMutex.Unlock()
+
+		r2tListMutex.Lock()
+		r2tListValue := r2tList[i][j]
+		r2tListMutex.Unlock()
+		r2tMutex.Lock()
+		r2t[j+i] = r2tListValue
+		r2tMutex.Unlock()
+	}
+	fmt.Println("It took me", time.Since(startTime))
 }
 
 func reconstructR2T(xyr2t finite.Number, partySize int, i int) {
 	distributeR2T(xyr2t, partySize, i, false)
-	if bundleCounter == network.GetPartyNumber()  {
+	whosTurn := i % partySize + 1
+	if whosTurn == network.GetPartyNumber()  {
 		for {
 			r2tMapMutex.Lock()
 			r2tMapLength := len(r2tMap[i])
+			r2tMapValue := r2tMap[i]
 			r2tMapMutex.Unlock()
 			if r2tMapLength >= partySize {
-				xyr := Shamir.Reconstruct(r2tMap[i])
+				xyr := Shamir.Reconstruct(r2tMapValue)
 				distributeR2T(xyr, partySize, i, true)
 				break
 			}
 		}
 	}
-	bundleCounter++
-	if bundleCounter > partySize {
-		bundleCounter = 1
-	}
+
 }
 
 func countMultiGates(circuit Circuit.Circuit) int {
@@ -211,7 +309,9 @@ func listUnFilled(size int) []finite.Number{
 }
 
 
-func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, number finite.Number, randomType string) []finite.Number  {
+func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, number finite.Number, randomType string, wg *sync.WaitGroup)   {
+	defer wg.Done()
+	startTime := time.Now()
 	randomShares := field.ComputeShares(partySize, number)
 	distributeShares(randomShares, network.GetParties(), i, randomType)
 	for {
@@ -227,8 +327,24 @@ func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, 
 	prepMutex.Lock()
 	xShares = prepShares[i][randomType]
 	prepMutex.Unlock()
-
-	return extractRandomness(xShares, matrix, field, corrupts)
+	if randomType == "y" {
+		yListMutex.Lock()
+		yList[i] = extractRandomness(xShares, matrix, field, corrupts)
+		yListMutex.Unlock()
+	} else if randomType == "x" {
+		xListMutex.Lock()
+		xList[i] = extractRandomness(xShares, matrix, field, corrupts)
+		xListMutex.Unlock()
+	} else if randomType == "r" {
+		rListMutex.Lock()
+		rList[i] = extractRandomness(xShares, matrix, field, corrupts)
+		rListMutex.Unlock()
+	} else {
+		r2tListMutex.Lock()
+		r2tList[i] = extractRandomness(xShares, matrix, field, corrupts)
+		r2tListMutex.Unlock()
+	}
+	fmt.Println("It took me ", time.Since(startTime), "to calculate randomTuple for", randomType)
 
 }
 
@@ -307,7 +423,7 @@ func extractRandomness(x []finite.Number, matrix [][]finite.Number, field finite
 			//y[i] = y[i] + matrix[i][j] * x[j]
 		}
 	}
-	return ye//ye[:len(x) - corrupts]
+	return ye[:len(x) - corrupts]
 }
 
 func distributeShares(shares []finite.Number, partySize int, gate int, randomType string) {
@@ -366,8 +482,8 @@ func distributeR2T(share finite.Number, partySize int, gate int, forAll bool) {
 			From:   network.GetPartyNumber(),
 			Gate: 	gate,
 		}
-
-		if network.GetPartyNumber() == bundleCounter {
+		whosTurn := gate % partySize + 1
+		if network.GetPartyNumber() == whosTurn {
 			r2tMapMutex.Lock()
 			r2tShares = r2tMap[gate]
 			if r2tShares == nil {
@@ -377,7 +493,7 @@ func distributeR2T(share finite.Number, partySize int, gate int, forAll bool) {
 			r2tMap[gate] = r2tShares
 			r2tMapMutex.Unlock()
 		} else {
-			network.Send(shareBundle, bundleCounter)
+			network.Send(shareBundle, whosTurn)
 		}
 	}
 

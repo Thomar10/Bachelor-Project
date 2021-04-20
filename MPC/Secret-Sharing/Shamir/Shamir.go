@@ -238,16 +238,17 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 						return result
 					}
 				}
+				resultMutex.Lock()
 				keys := reflect.ValueOf(resultGate).MapKeys()
 				key := keys[0]
-				resultMutex.Lock()
 				resultGateLen := len(resultGate[(key.Interface()).(int)])
 				resultGateValue := resultGate[(key.Interface()).(int)]
-				resultMutex.Unlock()
 				if resultGateLen >= corrupts + 1 { //var == før
 					result = Reconstruct(resultGateValue)
 					done = true
-				} /*else if len(resultGate[(key.Interface()).(int)]) > corrupts + 1 {
+				}
+				resultMutex.Unlock()
+				/*else if len(resultGate[(key.Interface()).(int)]) > corrupts + 1 {
 					resultMapMutex.Lock()
 					//Fjern indtil vi er på corrupts + 1
 					resultMap := resultGate[(key.Interface()).(int)]
