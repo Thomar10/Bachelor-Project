@@ -173,8 +173,9 @@ func Send(bundle bundle.Bundle, party int) {
 		Type: "bundle",
 		Bundle: bundle,
 	}
-
+	connMutex.Lock()
 	encoder := encoders[partyToSend]
+	connMutex.Unlock()
 	//encoder := gob.NewEncoder(partyToSend)
 
 	err := encoder.Encode(packet)
@@ -317,7 +318,9 @@ func sendPeers(conn net.Conn) {
 	peersList := peers
 	peersMutex.Unlock()
 	encoder := gob.NewEncoder(conn)
+	connMutex.Lock()
 	encoders[conn] = encoder //Add encoder to map
+	connMutex.Unlock()
 	packet := Packet{
 		ID: uuid.Must(uuid.NewRandom()).String(),
 		Type: "peerlist",
