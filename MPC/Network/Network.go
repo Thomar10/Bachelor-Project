@@ -49,7 +49,7 @@ var isHost bool
 var receiver []Receiver
 var myIP string
 
-var debug = true
+var debug = false
 
 
 func GetPartyNumber() int {
