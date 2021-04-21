@@ -134,10 +134,12 @@ func main() {
 	}
 
 	if preprocessing {
+		fmt.Println("Preprocessing!")
 		corrupts := (partySize - 1) / 2
 		Preparation.Prepare(circuit, finiteField, corrupts, secretSharing)
+		fmt.Println("Done preprocessing")
 	}
-	fmt.Println("Done preprocessing")
+
 
 	startTime := time.Now()
 	result := secretSharing.TheOneRing(circuit, secret, preprocessing)

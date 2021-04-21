@@ -50,7 +50,7 @@ var isHost bool
 var receiver []Receiver
 var myIP string
 
-var debug = false
+var debug = true
 
 func GetPartyNumber() int {
 	for i, p := range peers {
