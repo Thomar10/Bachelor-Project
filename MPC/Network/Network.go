@@ -30,6 +30,8 @@ type Packet struct {
 
 //List of IPs
 var peers []string
+//Dictates party order. Gets sent by the host and transferred into peers before ready is sent
+var peerOrder []string
 
 //List of connections
 var connections []net.Conn
@@ -137,6 +139,20 @@ func sendReady() {
 		peersMutex.Lock()
 		packet.Connections = peers
 		peersMutex.Unlock()
+	} else {
+		peersMutex.Lock()
+		if len(peers) != len(peerOrder) {
+			fmt.Println("Fix me. I did not receive my ready package from the host before I was ready")
+			peersMutex.Unlock()
+			for {
+				if len(peers) == len(peerOrder) {
+					break
+				}
+			}
+			peersMutex.Lock()
+		}
+		peers = peerOrder
+		peersMutex.Unlock()
 	}
 
 	fmt.Println(packet)
@@ -171,7 +187,7 @@ func Send(bundle bundle.Bundle, party int) {
 	partyToSend, found := parties[peer] //connections[party]
 	partiesMutex.Unlock()
 	if !found {
-		fmt.Println("Party could not be found in parties :(")
+		fmt.Println("Party could not be found in parties")
 	}
 	packet := Packet{
 		ID:     uuid.Must(uuid.NewRandom()).String(),
@@ -261,9 +277,7 @@ func handleConnection(conn net.Conn) {
 
 		if packet.Type == "ready" {
 			if len(packet.Connections) > 0 {
-				peersMutex.Lock()
-				peers = packet.Connections
-				peersMutex.Unlock()
+				peerOrder = packet.Connections
 			}
 			readyMutex.Lock()
 			readyParties[conn] = true
@@ -310,7 +324,6 @@ func newIP(ip string) bool {
 			return false
 		}
 	}
-
 	//Check if own ip
 	if ip == peers[0] {
 		return false
