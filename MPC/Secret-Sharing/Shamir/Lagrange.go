@@ -38,7 +38,7 @@ func Reconstruct(shares map[int]finite.Number) finite.Number {
 		keysArray = append(keysArray, (k.Interface()).(int))
 	}
 	sort.Ints(keysArray)
-	//deltas := make([][]int, len(keysArray))
+
 	var secret = finite.Number{Prime: big.NewInt(0), Binary: []int{0, 0, 0, 0, 0, 0, 0, 0}}
 	for _, key := range keysArray {
 		//secret += shares[key] * computeDelta(key, keysArray)[0]
@@ -46,13 +46,7 @@ func Reconstruct(shares map[int]finite.Number) finite.Number {
 		share := shares[key]
 		var interRes = field.Mul(share, delta)
 		secret = field.Add(interRes, secret)
-
-		//iterRes := new(big.Int).Mul(shares[key], computeDelta(key, keysArray))
-		//secret.Add(secret, iterRes)
-
-		//deltas[i] = computeDelta(key, keysArray)
 	}
-	//int(secret.Mod(secret, field.GetSize()).Int64())//secret % field.GetSize()
 	return secret
 
 }

@@ -307,6 +307,7 @@ func distributeShares(shares []finite.Number, partySize int, gate int, randomTyp
 		}
 
 		if network.GetPartyNumber() == party {
+			fmt.Println("Im sending", shareBundle, "to", party, "from", network.GetPartyNumber())
 			prepMutex.Lock()
 			randomMap := prepShares[gate]
 			prepMutex.Unlock()
@@ -321,6 +322,7 @@ func distributeShares(shares []finite.Number, partySize int, gate int, randomTyp
 			prepShares[gate] = randomMap
 			prepMutex.Unlock()
 		} else {
+			fmt.Println("Im sending", shareBundle, "to", party, "from", network.GetPartyNumber())
 			network.Send(shareBundle, party)
 		}
 	}

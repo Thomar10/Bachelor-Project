@@ -22,41 +22,14 @@ func main() {
 	finiteFieldf.InitSeed()
 	finiteFieldf.SetSize(finiteFieldf.GenerateField())
 	secretSharingg.SetField(finiteFieldf)
-/*	number := finite.Number{Prime: big.NewInt(3)}
-	numberInv := finiteFieldf.Mul(finite.Number{Prime: big.NewInt(-1)},number)
-	fmt.Println(number)
-	fmt.Println(numberInv)
-	fmt.Println(finiteFieldf.Add(number, numberInv))
-	sharesMap := make(map[int]finite.Number)
-	shares := secretSharingg.ComputeShares(3, finite.Number{Prime: big.NewInt(7)})
-	for i, s := range shares {
-		sharesMap[i + 1] = finiteFieldf.Add(s, numberInv)
-	}
-	fmt.Println("Lul", Shamir.Reconstruct(sharesMap))*/
 
 	sharesMap := make(map[int]finite.Number)
-	shares := []finite.Number{{Prime: big.NewInt(1)},{Prime: big.NewInt(12)}, {Prime: big.NewInt(0)}}
+	shares := []finite.Number{{Prime: big.NewInt(1)},{Prime: big.NewInt(12)}, {Prime: big.NewInt(0)}, {Prime: big.NewInt(0)}}
 	for i, s := range shares {
 		sharesMap[i + 1] = s
 	}
-	fmt.Println("R", Shamir.Reconstruct(sharesMap))
+	fmt.Println("hmm", Shamir.Reconstruct(sharesMap))
 
-	sharesMap = make(map[int]finite.Number)
-	shares = []finite.Number{{Prime: big.NewInt(4)},{Prime: big.NewInt(0)}, {Prime: big.NewInt(16)}}
-	for i, s := range shares {
-		sharesMap[i + 1] = s
-	}
-	fmt.Println("R2T", Shamir.Reconstruct(sharesMap))
-
-
-
-
-	sharesMap = make(map[int]finite.Number)
-	shares = []finite.Number{{Prime: big.NewInt(5)},{Prime: big.NewInt(5)}, {Prime: big.NewInt(5)}}
-	for i, s := range shares {
-		sharesMap[i + 1] = s
-	}
-	fmt.Println("ab-r", Shamir.Reconstruct(sharesMap))
 }
 
 func bitAdd(b1 []int, b2 []int) []int {

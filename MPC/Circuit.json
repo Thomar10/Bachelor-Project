@@ -1,5 +1,5 @@
 {
-  "PartySize": 3,
+  "PartySize": 5,
   "Field": "Prime",
   "SecretSharing": "Shamir",
   "Gate": [
