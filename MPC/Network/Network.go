@@ -66,6 +66,30 @@ func GetPartyNumber() int {
 	panic("Could not find miself :(")
 }
 
+func resetNetwork() {
+	//Close all connections
+	for i := 0; i < len(connections); i++ {
+		conn := connections[i]
+		_ = conn.Close()
+	}
+
+	//reset all variables
+	peers = []string{}
+	peerOrder = []string{}
+	connections = []net.Conn{}
+	encoders = make(map[net.Conn]*gob.Encoder)
+	decoders = make(map[net.Conn]*gob.Decoder)
+	parties = make(map[string]net.Conn)
+	finalNetworkSize = 0
+	readyParties = make(map[net.Conn]bool)
+	ready2Parties = make(map[net.Conn]bool)
+	readySent = false
+	ready2Sent = false
+	isHost = false
+	receiver = []Receiver{}
+	myIP = ""
+}
+
 func InitWithHostAddress(networkSize int, address string, hostAddress string) bool {
 	finalNetworkSize = networkSize
 
