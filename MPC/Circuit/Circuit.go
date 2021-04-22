@@ -4,6 +4,7 @@ type Circuit struct {
 	PartySize int `json:"PartySize"`
 	Field string `json:"Field"`
 	SecretSharing string `json:"SecretSharing"`
+	Preprocessing bool `json:"Preprocessing"`
 	Gates []Gate `json:"Gate"`
 }
 

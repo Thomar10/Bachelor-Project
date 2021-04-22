@@ -94,6 +94,7 @@ func main() {
 	}
 
 	partySize = circuit.PartySize
+	preprocessing = circuit.Preprocessing
 	finiteField.InitSeed()
 	bundleType = numberbundle.NumberBundle{}
 
@@ -168,6 +169,36 @@ func main() {
 		fmt.Println("Final result:", result.Binary)
 	}
 	fmt.Println("The protocol took", endTime)
+}
+
+
+func MPCTest(circuitToLoad string, secret finite.Number) (finite.Number, time.Duration) {
+	loadCircuit(circuitToLoad)
+	if circuit.SecretSharing == "Shamir" {
+		secretSharing = Shamir.Shamir{}
+	} else {
+		secretSharing = Simple_Sharing.Simple_Sharing{}
+	}
+	if circuit.Field == "Prime" {
+		finiteField = Prime.Prime{}
+	}else {
+		finiteField = Binary.Binary{}
+	}
+	partySize = circuit.PartySize
+	preprocessing = circuit.Preprocessing
+	finiteField.InitSeed()
+	bundleType = numberbundle.NumberBundle{}
+
+	receiver := Receiver{}
+	network.RegisterReceiver(receiver)
+	Preparation.RegisterReceiver()
+	secretSharing.RegisterReceiver()
+
+	startTime := time.Now()
+	result := secretSharing.TheOneRing(circuit, secret, preprocessing)
+	endTime := time.Since(startTime)
+
+	return result, endTime
 }
 
 func createField(fieldSize finite.Number) {
