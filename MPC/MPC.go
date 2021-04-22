@@ -172,7 +172,7 @@ func main() {
 }
 
 
-func MPCTest(circuitToLoad string, secret finite.Number) (finite.Number, time.Duration) {
+func MPCTest(circuitToLoad string, secret finite.Number, address, hostAddress string) (finite.Number, time.Duration) {
 	loadCircuit(circuitToLoad)
 	if circuit.SecretSharing == "Shamir" {
 		secretSharing = Shamir.Shamir{}
@@ -193,6 +193,8 @@ func MPCTest(circuitToLoad string, secret finite.Number) (finite.Number, time.Du
 	network.RegisterReceiver(receiver)
 	Preparation.RegisterReceiver()
 	secretSharing.RegisterReceiver()
+
+	network.InitWithHostAddress(partySize, address, hostAddress)
 
 	startTime := time.Now()
 	result := secretSharing.TheOneRing(circuit, secret, preprocessing)
