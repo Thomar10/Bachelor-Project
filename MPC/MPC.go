@@ -138,7 +138,7 @@ func main() {
 		Preparation.Prepare(circuit, finiteField, corrupts, secretSharing)
 	}
 	fmt.Println("Done preprocessing")
-
+	fmt.Println("I am party", network.GetPartyNumber())
 	startTime := time.Now()
 	result := secretSharing.TheOneRing(circuit, secret, preprocessing)
 	endTime := time.Since(startTime)

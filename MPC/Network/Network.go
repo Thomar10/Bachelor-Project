@@ -39,6 +39,7 @@ var connections []net.Conn
 var receiverMutex = &sync.Mutex{}
 var connMutex = &sync.Mutex{}
 var readyMutex = &sync.Mutex{}
+var ready2Mutex = &sync.Mutex{}
 var peersMutex = &sync.Mutex{}
 var partiesMutex = &sync.Mutex{}
 
@@ -47,7 +48,9 @@ var decoders = make(map[net.Conn]*gob.Decoder)
 var parties = make(map[string]net.Conn)
 var finalNetworkSize int
 var readyParties = make(map[net.Conn]bool)
+var ready2Parties = make(map[net.Conn]bool)
 var readySent = false
+var ready2Sent = false
 var isHost bool
 var receiver []Receiver
 var myIP string
@@ -117,45 +120,25 @@ func GetParties() int {
 }
 
 func IsReady() bool {
-	readyMutex.Lock()
-	readyLen := len(readyParties)
-	readyMutex.Unlock()
+	ready2Mutex.Lock()
+	readyLen := len(ready2Parties)
+	ready2Mutex.Unlock()
+
 	return readyLen+1 == finalNetworkSize
 }
 
-func sendReady() {
+func sendReady1() {
 	readyMutex.Lock()
 	defer readyMutex.Unlock()
+
 	if readySent {
 		return
 	}
 
 	packet := Packet{
 		ID:   uuid.Must(uuid.NewRandom()).String(),
-		Type: "ready",
+		Type: "ready1",
 	}
-
-	if isHost {
-		peersMutex.Lock()
-		packet.Connections = peers
-		peersMutex.Unlock()
-	} else {
-		peersMutex.Lock()
-		if len(peers) != len(peerOrder) {
-			fmt.Println("Fix me. I did not receive my ready package from the host before I was ready")
-			peersMutex.Unlock()
-			for {
-				if len(peers) == len(peerOrder) {
-					break
-				}
-			}
-			peersMutex.Lock()
-		}
-		peers = peerOrder
-		peersMutex.Unlock()
-	}
-
-	fmt.Println(packet)
 
 	connMutex.Lock()
 	for _, conn := range connections {
@@ -169,13 +152,54 @@ func sendReady() {
 		err := encoder.Encode(packet)
 
 		if err != nil {
-			fmt.Println("Failed to send ready", err.Error())
+			fmt.Println("Failed to send ready1", err.Error())
 		}
 	}
 	connMutex.Unlock()
 
-	fmt.Println("I am ready!")
+	fmt.Println("Sent ready1")
 	readySent = true
+}
+
+func sendReady2() {
+
+	packet := Packet{
+		ID:   uuid.Must(uuid.NewRandom()).String(),
+		Type: "ready2",
+	}
+
+	if !isHost {
+		peersMutex.Lock()
+		peers = peerOrder
+		peersMutex.Unlock()
+	}
+
+	peersMutex.Lock()
+	packet.Connections = peers
+	peersMutex.Unlock()
+
+	connMutex.Lock()
+	for _, conn := range connections {
+		encoder, found := encoders[conn]
+
+		if !found {
+			encoder = gob.NewEncoder(conn)
+			encoders[conn] = encoder
+		}
+
+		err := encoder.Encode(packet)
+
+		if err != nil {
+			fmt.Println("Failed to send ready2", err.Error())
+		}
+	}
+	connMutex.Unlock()
+
+	fmt.Println("Sent ready2!")
+	ready2Sent = true
+
+	fmt.Println("My peerlist:", peers)
+	fmt.Println("My party list:", parties)
 }
 
 func Send(bundle bundle.Bundle, party int) {
@@ -220,19 +244,12 @@ func listen(ln net.Listener) {
 
 		fmt.Println("Accepted connection from:", conn.RemoteAddr())
 
-		go sendPeers(conn)
-		go handleConnection(conn)
-
 		connMutex.Lock()
 		connections = append(connections, conn)
 		connMutex.Unlock()
 
-		peersMutex.Lock()
-		peersLength := len(peers)
-		peersMutex.Unlock()
-		if peersLength == finalNetworkSize {
-			sendReady()
-		}
+		go sendPeers(conn)
+		go handleConnection(conn)
 
 		//fmt.Println("I have the following connections:", peers)
 	}
@@ -275,6 +292,36 @@ func handleConnection(conn net.Conn) {
 			//receiver.Receive(packet.Bundle)
 		}
 
+		if packet.Type == "ready1" {
+			readyMutex.Lock()
+			readyParties[conn] = true
+
+			if isHost {
+				readyLen := len(readyParties)
+				if readyLen+1 == finalNetworkSize {
+					ready2Mutex.Lock()
+					sendReady2()
+					ready2Mutex.Unlock()
+				}
+			}
+
+			readyMutex.Unlock()
+		}
+
+		//Packet is first received from host after which every other party will send one
+		if packet.Type == "ready2" {
+			ready2Mutex.Lock()
+
+			if !ready2Sent {
+				peerOrder = packet.Connections
+				sendReady2()
+			}
+
+			ready2Parties[conn] = true
+
+			ready2Mutex.Unlock()
+		}
+
 		if packet.Type == "ready" {
 			if len(packet.Connections) > 0 {
 				peerOrder = packet.Connections
@@ -305,11 +352,12 @@ func getPeers(conns []string, sender net.Conn) {
 			}
 		}
 	}
+
 	connMutex.Lock()
 	connLen := len(connections)
 	connMutex.Unlock()
 	if connLen+1 == finalNetworkSize {
-		sendReady()
+		sendReady1()
 	}
 
 	//fmt.Println("Received peers. I now have the following connections:", peers)
@@ -354,6 +402,13 @@ func sendPeers(conn net.Conn) {
 
 	if err != nil {
 		fmt.Println("Failed to gob peer packet:", err.Error())
+	}
+
+	connMutex.Lock()
+	connLen := len(connections)
+	connMutex.Unlock()
+	if connLen+1 == finalNetworkSize {
+		sendReady1()
 	}
 }
 
