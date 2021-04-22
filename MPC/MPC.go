@@ -38,9 +38,12 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			sizeSetMutex.Lock()
 			sizeSet = true
 			sizeSetMutex.Unlock()
-		} /*else {
-			panic("Given type is unknown: "+ match.Type)
-		}*/
+		}
+		if match.Type == "Done" {
+			doneMutex.Lock()
+			doneList = append(doneList, match.From)
+			doneMutex.Unlock()
+		}
 	}
 }
 
@@ -50,10 +53,11 @@ var secretSharing secretsharing.Secret_Sharing
 var partySize int
 var secret finite.Number
 var sizeSet bool
+var doneList []int
 var myPartyNumber int
 var circuit Circuit.Circuit
 var preprocessing = false
-
+var doneMutex = &sync.Mutex{}
 var sizeSetMutex = &sync.Mutex{}
 
 func main() {
@@ -88,6 +92,7 @@ func main() {
 
 		secret = finite.Number{Binary: secByte}
 	}
+
 	partySize = circuit.PartySize
 	finiteField.InitSeed()
 	bundleType = numberbundle.NumberBundle{}
@@ -96,6 +101,7 @@ func main() {
 	network.RegisterReceiver(receiver)
 	Preparation.RegisterReceiver()
 	secretSharing.RegisterReceiver()
+
 	isFirst := network.Init(partySize)
 	if isFirst {
 		finiteSize := finiteField.GenerateField()
@@ -134,14 +140,27 @@ func main() {
 	}
 
 	if preprocessing {
+		fmt.Println("Preprocessing!")
 		corrupts := (partySize - 1) / 2
 		Preparation.Prepare(circuit, finiteField, corrupts, secretSharing)
 	}
+
 	fmt.Println("Done preprocessing")
 	fmt.Println("I am party", network.GetPartyNumber())
+
 	startTime := time.Now()
 	result := secretSharing.TheOneRing(circuit, secret, preprocessing)
 	endTime := time.Since(startTime)
+
+	distributeDone()
+	for {
+		doneMutex.Lock()
+		if len(doneList) == partySize {
+			fmt.Println("Donelist", doneList)
+			break
+		}
+		doneMutex.Unlock()
+	}
 	switch finiteField.(type) {
 	case Prime.Prime:
 		fmt.Println("Final result:", result.Prime)
@@ -149,7 +168,6 @@ func main() {
 		fmt.Println("Final result:", result.Binary)
 	}
 	fmt.Println("The protocol took", endTime)
-
 }
 
 func createField(fieldSize finite.Number) {
@@ -169,5 +187,23 @@ func loadCircuit(file string) {
 	//var circuit Circuit.Circuit
 	byteValue, _ := ioutil.ReadAll(jsonFile)
 	json.Unmarshal(byteValue, &circuit)
+
+}
+func distributeDone() {
+	me := network.GetPartyNumber()
+	for party := 1; party <= partySize; party++ {
+		bundle := numberbundle.NumberBundle{
+			ID:    uuid.Must(uuid.NewRandom()).String(),
+			Type:  "Done",
+			From:  me,
+		}
+		if party == network.GetPartyNumber() {
+			doneMutex.Lock()
+			doneList = append(doneList, me)
+			doneMutex.Unlock()
+		}else {
+			network.Send(bundle, party)
+		}
+	}
 
 }

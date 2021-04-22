@@ -171,6 +171,7 @@ func sendReady2() {
 	if !isHost {
 		peersMutex.Lock()
 		peers = peerOrder
+		fmt.Println("Peers", peers)
 		peersMutex.Unlock()
 	}
 
@@ -209,6 +210,7 @@ func Send(bundle bundle.Bundle, party int) {
 	peersMutex.Unlock()
 	partiesMutex.Lock()
 	partyToSend, found := parties[peer] //connections[party]
+	fmt.Println("Party uartig", parties)
 	partiesMutex.Unlock()
 	if !found {
 		fmt.Println("Party could not be found in parties")
@@ -265,7 +267,7 @@ func handleConnection(conn net.Conn) {
 		err := decoder.Decode(&packet)
 
 		if err != nil {
-			fmt.Println("Connection error:", err.Error())
+			//fmt.Println("Connection error:", err.Error())
 			return
 		}
 
@@ -284,9 +286,12 @@ func handleConnection(conn net.Conn) {
 			}
 			//fmt.Println("Sending packet to receivers ", packet.Bundle)
 			receiverMutex.Lock()
+
 			for _, r := range receiver {
 				r.Receive(packet.Bundle)
 			}
+			//fmt.Println(len(receiver))
+			//fmt.Println("I have received", packet.Bundle)
 			//fmt.Println("Got the following packet!", packet.Bundle)
 			receiverMutex.Unlock()
 			//receiver.Receive(packet.Bundle)
@@ -339,6 +344,7 @@ func getPeers(conns []string, sender net.Conn) {
 	connMutex.Unlock()
 	partiesMutex.Lock()
 	parties[senderIP] = sender
+	fmt.Println("I have added", senderIP, "to map too", sender)
 	partiesMutex.Unlock()
 	for i, ip := range conns {
 		if newIP(ip) {
@@ -430,6 +436,7 @@ func connect(ipPort string) bool {
 
 	partiesMutex.Lock()
 	parties[ipPort] = conn
+	fmt.Println("I have connected to", ipPort, "with conn", conn)
 	partiesMutex.Unlock()
 	return true
 }
