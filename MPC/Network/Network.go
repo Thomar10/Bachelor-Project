@@ -91,12 +91,14 @@ func InitWithHostAddress(networkSize int, address string, hostAddress string) bo
 	return isHost
 }
 
+
+
 func InitToHost(networkSize int, hostAddress string) bool {
 	finalNetworkSize = networkSize
 
 	gob.Register(numberbundle.NumberBundle{})
 
-	isHost = !connect(hostAddress)
+
 
 	ln, err := net.Listen("tcp", ":")
 
@@ -107,13 +109,22 @@ func InitToHost(networkSize int, hostAddress string) bool {
 
 	_, port, _ := net.SplitHostPort(ln.Addr().String())
 
-	myIP = getPublicIP() + ":" + port
-
 	if debug {
 		myIP = getLocalIP() + ":" + port
+	}else {
+		myIP = getPublicIP() + ":" + port
 	}
 
+
+
+	peersMutex.Lock()
+	peers = append(peers, myIP)
+	peersMutex.Unlock()
+	isHost = !connect(hostAddress)
 	if isHost {
+		peersMutex.Lock()
+		peers[0] = hostAddress
+		peersMutex.Unlock()
 		ln, err = net.Listen("tcp", hostAddress)
 		myIP = hostAddress
 	}
@@ -125,9 +136,7 @@ func InitToHost(networkSize int, hostAddress string) bool {
 
 	fmt.Println("Listening on following connection:", myIP)
 
-	peersMutex.Lock()
-	peers = append(peers, myIP)
-	peersMutex.Unlock()
+
 
 	go listen(ln)
 	return isHost
@@ -156,10 +165,10 @@ func Init(networkSize int) bool {
 
 	_, port, _ := net.SplitHostPort(ln.Addr().String())
 
-	myIP = getPublicIP() + ":" + port
-
 	if debug {
 		myIP = getLocalIP() + ":" + port
+	}else {
+		myIP = getPublicIP() + ":" + port
 	}
 
 	return InitWithHostAddress(networkSize, myIP, ipPort)

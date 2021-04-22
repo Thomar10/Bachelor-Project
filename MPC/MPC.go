@@ -61,15 +61,131 @@ var doneMutex = &sync.Mutex{}
 var sizeSetMutex = &sync.Mutex{}
 
 func main() {
+	if os.Args[1] == "test" {
+		for i:= 0; i < 2; i++ {
+			secretToTest := finite.Number{Prime: big.NewInt(5)}
+			result, timee := MPCTest("Circuit", secretToTest, "192.168.1.100:62123")
+			fmt.Println("Result", result)
+			fmt.Println("Took", timee)
+			time.Sleep(10)
+		}
 
-	circuitToLoad := os.Args[1]
-	loadCircuit(circuitToLoad + ".json")
-	var sec string
-	if len(os.Args) > 2 {
-		sec = os.Args[2]
 	} else {
-		sec = "-1"
+		circuitToLoad := os.Args[1]
+		loadCircuit(circuitToLoad + ".json")
+		var sec string
+		if len(os.Args) > 2 {
+			sec = os.Args[2]
+		} else {
+			sec = "-1"
+		}
+		if circuit.SecretSharing == "Shamir" {
+			secretSharing = Shamir.Shamir{}
+		} else {
+			secretSharing = Simple_Sharing.Simple_Sharing{}
+		}
+		if circuit.Field == "Prime" {
+			finiteField = Prime.Prime{}
+			s, _ := strconv.Atoi(sec)
+			secret = finite.Number{Prime: big.NewInt(int64(s))}
+		} else {
+			finiteField = Binary.Binary{}
+			secByte := make([]int, len(sec))
+			for i, r := range sec {
+				secByte[i], _ = strconv.Atoi(string(r))
+			}
+
+			if sec == "-1" {
+				secByte = make([]int, 0)
+			}
+
+			secret = finite.Number{Binary: secByte}
+		}
+
+		partySize = circuit.PartySize
+		preprocessing = circuit.Preprocessing
+		finiteField.InitSeed()
+		bundleType = numberbundle.NumberBundle{}
+
+		receiver := Receiver{}
+		network.RegisterReceiver(receiver)
+		Preparation.RegisterReceiver()
+		secretSharing.RegisterReceiver()
+
+		isFirst := network.Init(partySize)
+		if isFirst {
+			finiteSize := finiteField.GenerateField()
+			switch bundleType.(type) {
+			case numberbundle.NumberBundle:
+				bundleType = numberbundle.NumberBundle{
+					ID:    uuid.Must(uuid.NewRandom()).String(),
+					Type:  "Prime",
+					Prime: finiteSize,
+				}
+			default:
+				fmt.Println(":(")
+			}
+			for {
+				if network.IsReady() {
+					myPartyNumber = network.GetPartyNumber()
+					for i := 1; i <= partySize; i++ {
+						if myPartyNumber != i {
+							network.Send(bundleType, i)
+						}
+					}
+					break
+				}
+			}
+			createField(finiteSize)
+			sizeSet = true
+		}
+
+		for {
+			sizeSetMutex.Lock()
+			sizeSetValue := sizeSet
+			sizeSetMutex.Unlock()
+			if sizeSetValue {
+				break
+			}
+		}
+
+		if preprocessing {
+			fmt.Println("Preprocessing!")
+			corrupts := (partySize - 1) / 2
+			Preparation.Prepare(circuit, finiteField, corrupts, secretSharing)
+		}
+
+		fmt.Println("Done preprocessing")
+		fmt.Println("I am party", network.GetPartyNumber())
+
+		startTime := time.Now()
+		result := secretSharing.TheOneRing(circuit, secret, preprocessing)
+		endTime := time.Since(startTime)
+
+		distributeDone()
+		for {
+			doneMutex.Lock()
+			if len(doneList) == partySize {
+				fmt.Println("Donelist", doneList)
+				break
+			}
+			doneMutex.Unlock()
+		}
+		switch finiteField.(type) {
+		case Prime.Prime:
+			fmt.Println("Final result:", result.Prime)
+		case Binary.Binary:
+			fmt.Println("Final result:", result.Binary)
+		}
+		fmt.Println("The protocol took", endTime)
 	}
+
+
+}
+
+
+func MPCTest(circuitToLoad string, secret finite.Number, hostAddress string) (finite.Number, time.Duration) {
+	loadCircuit(circuitToLoad + ".json")
 	if circuit.SecretSharing == "Shamir" {
 		secretSharing = Shamir.Shamir{}
 	} else {
@@ -77,22 +193,9 @@ func main() {
 	}
 	if circuit.Field == "Prime" {
 		finiteField = Prime.Prime{}
-		s, _ := strconv.Atoi(sec)
-		secret = finite.Number{Prime: big.NewInt(int64(s))}
-	} else {
+	}else {
 		finiteField = Binary.Binary{}
-		secByte := make([]int, len(sec))
-		for i, r := range sec {
-			secByte[i], _ = strconv.Atoi(string(r))
-		}
-
-		if sec == "-1" {
-			secByte = make([]int, 0)
-		}
-
-		secret = finite.Number{Binary: secByte}
 	}
-
 	partySize = circuit.PartySize
 	preprocessing = circuit.Preprocessing
 	finiteField.InitSeed()
@@ -103,7 +206,8 @@ func main() {
 	Preparation.RegisterReceiver()
 	secretSharing.RegisterReceiver()
 
-	isFirst := network.Init(partySize)
+	isFirst := network.InitToHost(partySize, hostAddress)
+
 	if isFirst {
 		finiteSize := finiteField.GenerateField()
 		switch bundleType.(type) {
@@ -139,7 +243,6 @@ func main() {
 			break
 		}
 	}
-
 	if preprocessing {
 		fmt.Println("Preprocessing!")
 		corrupts := (partySize - 1) / 2
@@ -147,54 +250,6 @@ func main() {
 	}
 
 	fmt.Println("Done preprocessing")
-	fmt.Println("I am party", network.GetPartyNumber())
-
-	startTime := time.Now()
-	result := secretSharing.TheOneRing(circuit, secret, preprocessing)
-	endTime := time.Since(startTime)
-
-	distributeDone()
-	for {
-		doneMutex.Lock()
-		if len(doneList) == partySize {
-			fmt.Println("Donelist", doneList)
-			break
-		}
-		doneMutex.Unlock()
-	}
-	switch finiteField.(type) {
-	case Prime.Prime:
-		fmt.Println("Final result:", result.Prime)
-	case Binary.Binary:
-		fmt.Println("Final result:", result.Binary)
-	}
-	fmt.Println("The protocol took", endTime)
-}
-
-
-func MPCTest(circuitToLoad string, secret finite.Number, address, hostAddress string) (finite.Number, time.Duration) {
-	loadCircuit(circuitToLoad)
-	if circuit.SecretSharing == "Shamir" {
-		secretSharing = Shamir.Shamir{}
-	} else {
-		secretSharing = Simple_Sharing.Simple_Sharing{}
-	}
-	if circuit.Field == "Prime" {
-		finiteField = Prime.Prime{}
-	}else {
-		finiteField = Binary.Binary{}
-	}
-	partySize = circuit.PartySize
-	preprocessing = circuit.Preprocessing
-	finiteField.InitSeed()
-	bundleType = numberbundle.NumberBundle{}
-
-	receiver := Receiver{}
-	network.RegisterReceiver(receiver)
-	Preparation.RegisterReceiver()
-	secretSharing.RegisterReceiver()
-
-	network.InitWithHostAddress(partySize, address, hostAddress)
 
 	startTime := time.Now()
 	result := secretSharing.TheOneRing(circuit, secret, preprocessing)

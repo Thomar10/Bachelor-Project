@@ -29,7 +29,6 @@ func main() {
 		sharesMap[i + 1] = s
 	}
 	fmt.Println("hmm", Shamir.Reconstruct(sharesMap))
-
 }
 
 func bitAdd(b1 []int, b2 []int) []int {
