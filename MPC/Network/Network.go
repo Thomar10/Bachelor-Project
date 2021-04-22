@@ -66,11 +66,36 @@ func GetPartyNumber() int {
 	panic("Could not find miself :(")
 }
 
-func Init(networkSize int) bool {
-
+func InitWithHostAddress(networkSize int, address string, hostAddress string) bool {
 	finalNetworkSize = networkSize
 
 	gob.Register(numberbundle.NumberBundle{})
+
+	ln, err := net.Listen("tcp", address)
+
+	if err != nil {
+		fmt.Println("Could not listen for incoming connections:", err.Error())
+		panic(err.Error())
+	}
+
+	fmt.Println("Listening on following connection: ", address)
+
+	peersMutex.Lock()
+	peers = append(peers, address)
+	peersMutex.Unlock()
+
+	//Connect returnerer false hvis man failer et connect - hermed er du den første
+	isHost = !connect(hostAddress)
+
+	go listen(ln)
+	return isHost
+}
+
+func Init(networkSize int) bool {
+
+	//finalNetworkSize = networkSize
+
+	//gob.Register(numberbundle.NumberBundle{})
 
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Ip and port of a peer on the network >")
@@ -81,6 +106,12 @@ func Init(networkSize int) bool {
 	if debug {
 		ln, err = net.Listen("tcp", ":")
 	}
+
+	if err != nil {
+		fmt.Println("Could not set up local listener")
+		panic(err.Error())
+	}
+
 	_, port, _ := net.SplitHostPort(ln.Addr().String())
 
 	myIP = getPublicIP() + ":" + port
@@ -89,21 +120,7 @@ func Init(networkSize int) bool {
 		myIP = getLocalIP() + ":" + port
 	}
 
-	fmt.Println("Listening on following connection: ", myIP)
-	peersMutex.Lock()
-	peers = append(peers, myIP)
-	peersMutex.Unlock()
-
-	if err != nil {
-		fmt.Println("Could not listen for incoming connections:", err.Error())
-		panic(err.Error())
-	}
-
-	//Connect returnere false hvis man failer et connect - hermed er du den første
-	isHost = !connect(ipPort)
-
-	go listen(ln)
-	return isHost
+	return InitWithHostAddress(networkSize, myIP, ipPort)
 }
 
 func RegisterReceiver(r Receiver) {
