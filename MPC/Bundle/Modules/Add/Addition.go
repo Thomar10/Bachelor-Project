@@ -15,7 +15,7 @@ type Receiver struct {
 }
 
 func (r Receiver) Receive(bundle bundle.Bundle) {
-	fmt.Println("I have received bundle:", bundle)
+	//fmt.Println("I have received bundle:", bundle)
 	switch match := bundle.(type) {
 	case numberbundle.NumberBundle:
 		if match.Type == "Share" {

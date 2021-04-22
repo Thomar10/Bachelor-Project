@@ -19,6 +19,10 @@ var function string
 type Simple_Sharing struct {
 }
 
+func (s Simple_Sharing) ResetSecretSharing() {
+	panic("lul")
+}
+
 func (s Simple_Sharing) RegisterReceiver() {
 	panic("lul")
 }

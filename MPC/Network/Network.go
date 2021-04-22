@@ -35,6 +35,7 @@ var peerOrder []string
 
 //List of connections
 var connections []net.Conn
+var listeners[]net.Listener
 
 var receiverMutex = &sync.Mutex{}
 var connMutex = &sync.Mutex{}
@@ -66,17 +67,23 @@ func GetPartyNumber() int {
 	panic("Could not find miself :(")
 }
 
-func resetNetwork() {
+func ResetNetwork() {
 	//Close all connections
 	for i := 0; i < len(connections); i++ {
 		conn := connections[i]
 		_ = conn.Close()
+
+	}
+	for _, ln := range listeners {
+		_ = ln.Close()
+
 	}
 
 	//reset all variables
 	peers = []string{}
 	peerOrder = []string{}
 	connections = []net.Conn{}
+	listeners = []net.Listener{}
 	encoders = make(map[net.Conn]*gob.Encoder)
 	decoders = make(map[net.Conn]*gob.Decoder)
 	parties = make(map[string]net.Conn)
@@ -101,7 +108,7 @@ func InitWithHostAddress(networkSize int, address string, hostAddress string) bo
 		fmt.Println("Could not listen for incoming connections:", err.Error())
 		panic(err.Error())
 	}
-
+	listeners = append(listeners, ln)
 	fmt.Println("Listening on following connection: ", address)
 
 	peersMutex.Lock()
@@ -155,8 +162,13 @@ func InitToHost(networkSize int, hostAddress string) bool {
 
 	if err != nil {
 		fmt.Println("Could not listen for incoming connections:", err.Error())
-		panic(err.Error())
+		ResetNetwork()
+		return InitToHost(networkSize, hostAddress)
+		//panic(err.Error())
+	}else {
+		listeners = append(listeners, ln)
 	}
+
 
 	fmt.Println("Listening on following connection:", myIP)
 
@@ -194,7 +206,7 @@ func Init(networkSize int) bool {
 	}else {
 		myIP = getPublicIP() + ":" + port
 	}
-
+	listeners = append(listeners, ln)
 	return InitWithHostAddress(networkSize, myIP, ipPort)
 }
 
@@ -291,8 +303,6 @@ func sendReady2() {
 	fmt.Println("Sent ready2!")
 	ready2Sent = true
 
-	fmt.Println("My peerlist:", peers)
-	fmt.Println("My party list:", parties)
 }
 
 func Send(bundle bundle.Bundle, party int) {
@@ -302,7 +312,6 @@ func Send(bundle bundle.Bundle, party int) {
 	peersMutex.Unlock()
 	partiesMutex.Lock()
 	partyToSend, found := parties[peer] //connections[party]
-	fmt.Println("Party uartig", parties)
 	partiesMutex.Unlock()
 	if !found {
 		fmt.Println("Party could not be found in parties")
@@ -436,7 +445,6 @@ func getPeers(conns []string, sender net.Conn) {
 	connMutex.Unlock()
 	partiesMutex.Lock()
 	parties[senderIP] = sender
-	fmt.Println("I have added", senderIP, "to map too", sender)
 	partiesMutex.Unlock()
 	for i, ip := range conns {
 		if newIP(ip) {
@@ -528,7 +536,6 @@ func connect(ipPort string) bool {
 
 	partiesMutex.Lock()
 	parties[ipPort] = conn
-	fmt.Println("I have connected to", ipPort, "with conn", conn)
 	partiesMutex.Unlock()
 	return true
 }

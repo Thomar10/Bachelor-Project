@@ -31,7 +31,7 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 	//fmt.Println("I have received bundle shamir:", bundle)
 	switch match := bundle.(type) {
 	case numberbundle.NumberBundle:
-		fmt.Println("Received bundle", match)
+		//fmt.Println("Received bundle", match)
 		//fmt.Println("Received bundle:", bundle)
 		if match.Type == "Share"{
 			//fmt.Println("I got share", match)
@@ -118,6 +118,29 @@ var x = make(map[int]finite.Number)
 var y = make(map[int]finite.Number)
 var z = make(map[int]finite.Number)
 var EDReconstructionCounter = 0
+
+
+
+func (s Shamir) ResetSecretSharing() {
+	function = ""
+	wires = make(map[int]finite.Number)
+	//var multMap = make(map[int]finite.Number)
+	gateMult = make(map[int]map[int]finite.Number)
+	eMult = make(map[int]map[int]finite.Number)
+	dMult = make(map[int]map[int]finite.Number)
+	eOpenMap = make(map[int]finite.Number)
+	dOpenMap = make(map[int]finite.Number)
+	resultGate = make(map[int]map[int]finite.Number)
+	receivedResults = make(map[int]finite.Number)
+	corrupts = 0
+	tripleCounter = 1
+	x = make(map[int]finite.Number)
+	y = make(map[int]finite.Number)
+	z = make(map[int]finite.Number)
+	EDReconstructionCounter = 0
+}
+
+
 
 func (s Shamir) SetFunction(f string) {
 	function = f
@@ -212,6 +235,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 				case "Multiplication":
 					if preprocessed  {
 						if true {
+							fmt.Println(wires)
 							output = processedMultReturn(input1, input2, gate, partySize)
 							wiresMutex.Lock()
 							wires[gate.GateNumber] = output
@@ -566,7 +590,7 @@ func distributeMultShares(shares []finite.Number, partySize int, gate int) {
 			gateMutex.Unlock()
 			//receivedShares = append(receivedShares, shareSlice...)
 		}else {
-			fmt.Println("Im sending ", shareBundle, "to", party)
+			//fmt.Println("Im sending ", shareBundle, "to", party)
 			network.Send(shareBundle, party)
 		}
 

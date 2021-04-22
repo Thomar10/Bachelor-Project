@@ -79,6 +79,21 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 	}
 }
 
+func ResetPrep() {
+	x = make(map[int]finite.Number)
+	y = make(map[int]finite.Number)
+	z = make(map[int]finite.Number)
+	r = make(map[int]finite.Number)
+	r2t = make(map[int]finite.Number)
+	prepShares = make(map[int]map[string][]finite.Number)
+	r2tShares = make(map[int]finite.Number)
+	r2tMap = make(map[int]map[int]finite.Number)
+	r2tOpen = make(map[int]finite.Number)
+	bundleCounter = 1
+}
+
+
+
 func initPrepShares(gate int) {
 	prepMutex.Lock()
 	randomMap := prepShares[gate]
@@ -307,7 +322,7 @@ func distributeShares(shares []finite.Number, partySize int, gate int, randomTyp
 		}
 
 		if network.GetPartyNumber() == party {
-			fmt.Println("Im sending", shareBundle, "to", party, "from", network.GetPartyNumber())
+			//fmt.Println("Im sending", shareBundle, "to", party, "from", network.GetPartyNumber())
 			prepMutex.Lock()
 			randomMap := prepShares[gate]
 			prepMutex.Unlock()
@@ -322,7 +337,7 @@ func distributeShares(shares []finite.Number, partySize int, gate int, randomTyp
 			prepShares[gate] = randomMap
 			prepMutex.Unlock()
 		} else {
-			fmt.Println("Im sending", shareBundle, "to", party, "from", network.GetPartyNumber())
+			//fmt.Println("Im sending", shareBundle, "to", party, "from", network.GetPartyNumber())
 			network.Send(shareBundle, party)
 		}
 	}

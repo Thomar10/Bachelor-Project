@@ -59,15 +59,34 @@ var circuit Circuit.Circuit
 var preprocessing = false
 var doneMutex = &sync.Mutex{}
 var sizeSetMutex = &sync.Mutex{}
+var waitTime int
+
+
+func resetTheWholeShit() {
+	sizeSetMutex.Lock()
+	sizeSet = false
+	sizeSetMutex.Unlock()
+	fmt.Println("Resetting done list")
+	doneMutex.Lock()
+	doneList = []int{}
+	doneMutex.Unlock()
+	fmt.Println("Resetting network")
+	network.ResetNetwork()
+	Preparation.ResetPrep()
+}
+
+
 
 func main() {
 	if os.Args[1] == "test" {
-		for i:= 0; i < 2; i++ {
+		for i:= 0; i < 10; i++ {
 			secretToTest := finite.Number{Prime: big.NewInt(5)}
 			result, timee := MPCTest("Circuit", secretToTest, "192.168.1.100:62123")
+			waitTime = network.GetPartyNumber()
 			fmt.Println("Result", result)
 			fmt.Println("Took", timee)
-			time.Sleep(10)
+			resetTheWholeShit()
+			time.Sleep(time.Duration(waitTime) * time.Second)
 		}
 
 	} else {
@@ -191,12 +210,14 @@ func MPCTest(circuitToLoad string, secret finite.Number, hostAddress string) (fi
 	} else {
 		secretSharing = Simple_Sharing.Simple_Sharing{}
 	}
+	secretSharing.ResetSecretSharing()
 	if circuit.Field == "Prime" {
 		finiteField = Prime.Prime{}
 	}else {
 		finiteField = Binary.Binary{}
 	}
 	partySize = circuit.PartySize
+
 	preprocessing = circuit.Preprocessing
 	finiteField.InitSeed()
 	bundleType = numberbundle.NumberBundle{}
@@ -205,6 +226,7 @@ func MPCTest(circuitToLoad string, secret finite.Number, hostAddress string) (fi
 	network.RegisterReceiver(receiver)
 	Preparation.RegisterReceiver()
 	secretSharing.RegisterReceiver()
+	fmt.Println("Im calling with partySize", partySize)
 
 	isFirst := network.InitToHost(partySize, hostAddress)
 
@@ -243,6 +265,7 @@ func MPCTest(circuitToLoad string, secret finite.Number, hostAddress string) (fi
 			break
 		}
 	}
+
 	if preprocessing {
 		fmt.Println("Preprocessing!")
 		corrupts := (partySize - 1) / 2
@@ -255,6 +278,16 @@ func MPCTest(circuitToLoad string, secret finite.Number, hostAddress string) (fi
 	result := secretSharing.TheOneRing(circuit, secret, preprocessing)
 	endTime := time.Since(startTime)
 
+	distributeDone()
+	for {
+		doneMutex.Lock()
+		fmt.Println("doneList", doneList)
+		if len(doneList) == partySize {
+			doneMutex.Unlock()
+			break
+		}
+		doneMutex.Unlock()
+	}
 	return result, endTime
 }
 

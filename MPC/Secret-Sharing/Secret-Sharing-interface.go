@@ -14,4 +14,5 @@ type Secret_Sharing interface {
 	ComputeResult([]finite.Number) finite.Number
 	SetTriple(xMap, yMap, zMap map[int]finite.Number)
 	RegisterReceiver()
+	ResetSecretSharing()
 }
