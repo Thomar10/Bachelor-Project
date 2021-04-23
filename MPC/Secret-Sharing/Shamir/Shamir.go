@@ -46,7 +46,7 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			}
 			multMap[match.From] = match.Shares[0]
 			gateMult[match.Gate] = multMap
-			fmt.Println(gateMult)
+			//fmt.Println(gateMult)
 			gateMutex.Unlock()
 		} else if match.Type == "Result" {
 			resultMutex.Lock()
@@ -109,7 +109,6 @@ var dOpenMutex = &sync.Mutex{}
 var wiresMutex = &sync.Mutex{}
 var gateMutex = &sync.Mutex{}
 var resultMutex = &sync.Mutex{}
-var resultMapMutex = &sync.Mutex{}
 var resultGate = make(map[int]map[int]finite.Number)
 var receivedResults = make(map[int]finite.Number)
 var corrupts = 0
@@ -223,8 +222,8 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 			input2, found2 := wires[gate.Input_two]
 			wiresMutex.Unlock()
 			if found1 && found2 || found1 && gate.Input_two == 0 {
-				fmt.Println("Gate ready")
-				fmt.Println(gate)
+				//fmt.Println("Gate ready")
+				//fmt.Println(gate)
 				var output finite.Number
 				switch gate.Operation {
 				case "Addition":
@@ -235,7 +234,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 				case "Multiplication":
 					if preprocessed  {
 						if true {
-							fmt.Println(wires)
+							//fmt.Println(wires)
 							output = processedMultReturn(input1, input2, gate, partySize)
 							wiresMutex.Lock()
 							wires[gate.GateNumber] = output
@@ -284,20 +283,18 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 					if outputGates == 0 {
 						//No outputs for this party - return 0
 						result.Prime = big.NewInt(0)
-						fmt.Println("I reconstructed ED", EDReconstructionCounter, "times")
+						//fmt.Println("I reconstructed ED", EDReconstructionCounter, "times")
 						return result
 					}
 				}
+				resultMutex.Lock()
 				keys := reflect.ValueOf(resultGate).MapKeys()
 				key := keys[0]
-				resultMutex.Lock()
-				resultGateLen := len(resultGate[(key.Interface()).(int)])
-				resultGateValue := resultGate[(key.Interface()).(int)]
-				resultMutex.Unlock()
-				if resultGateLen >= corrupts + 1 { //var == før
-					result = Reconstruct(resultGateValue)
+				if len(resultGate[(key.Interface()).(int)]) >= corrupts + 1 { //var == før
+					result = Reconstruct(resultGate[(key.Interface()).(int)])
 					done = true
 				}
+				resultMutex.Unlock()
 			case Binary.Binary:
 				if outputGates > 0 {
 					trueResult := make([]int, outputGates)
@@ -310,14 +307,14 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 						sort.Ints(keysArray)
 						for i, k := range keysArray {
 							for {
-								resultMapMutex.Lock()
+								resultMutex.Lock()
 								resultMapLen := len(resultGate[k])
-								resultMapMutex.Unlock()
+								resultMutex.Unlock()
 								if resultMapLen >= corrupts + 1  {
-									resultMapMutex.Lock()
+									resultMutex.Lock()
 									resultBit := Reconstruct(resultGate[k]).Binary[7]
 									trueResult[i] = resultBit
-									resultMapMutex.Unlock()
+									resultMutex.Unlock()
 									break
 								}
 							}
@@ -335,7 +332,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 		}
 	}
 
-	fmt.Println("I reconstructed ED", EDReconstructionCounter, "times")
+	//fmt.Println("I reconstructed ED", EDReconstructionCounter, "times")
 	return result
 }
 
@@ -345,16 +342,16 @@ func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize
 	//interMult.Mod(interMult, field.GetSize())
 	multShares := field.ComputeShares(partySize, interMult)
 	distributeMultShares(multShares, partySize, gate.GateNumber)
-	fmt.Println("Waiting to reconstruct")
-	fmt.Println("There is ", corrupts, " doing the execution")
+	//fmt.Println("Waiting to reconstruct")
+	//fmt.Println("There is ", corrupts, " doing the execution")
 	for {
 		gateMutex.Lock()
 		multMaap := gateMult[gate.GateNumber]
 		multMapLen := len(multMaap)
 		gateMutex.Unlock()
 		if multMapLen == 2 * corrupts + 1  {
-			fmt.Println("im reconstruction with a length of", multMapLen)
-			fmt.Println(multMaap)
+			//fmt.Println("im reconstruction with a length of", multMapLen)
+			//fmt.Println(multMaap)
 			return Reconstruct(multMaap)
 		}
 	}

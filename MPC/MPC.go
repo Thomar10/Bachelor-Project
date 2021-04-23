@@ -79,15 +79,29 @@ func resetTheWholeShit() {
 
 func main() {
 	if os.Args[1] == "test" {
-		for i:= 0; i < 10; i++ {
+		var avgTime time.Duration
+		minTime := 9999 * time.Second
+		maxTime := time.Duration(0)
+		for i:= 0; i < 100; i++ {
+			fmt.Println("Im on iteration", i + 1)
 			secretToTest := finite.Number{Prime: big.NewInt(5)}
 			result, timee := MPCTest("Circuit", secretToTest, "192.168.1.100:62123")
 			waitTime = network.GetPartyNumber()
 			fmt.Println("Result", result)
 			fmt.Println("Took", timee)
+			avgTime += timee
+			if timee < minTime {
+				minTime = timee
+			}
+			if timee > maxTime {
+				maxTime = timee
+			}
 			resetTheWholeShit()
 			time.Sleep(time.Duration(waitTime) * time.Second)
 		}
+		fmt.Println("It took on average", avgTime / 100)
+		fmt.Println("The lowest runtime", minTime)
+		fmt.Println("The highest runtime", maxTime)
 
 	} else {
 		circuitToLoad := os.Args[1]
@@ -226,7 +240,7 @@ func MPCTest(circuitToLoad string, secret finite.Number, hostAddress string) (fi
 	network.RegisterReceiver(receiver)
 	Preparation.RegisterReceiver()
 	secretSharing.RegisterReceiver()
-	fmt.Println("Im calling with partySize", partySize)
+	//fmt.Println("Im calling with partySize", partySize)
 
 	isFirst := network.InitToHost(partySize, hostAddress)
 
@@ -270,9 +284,10 @@ func MPCTest(circuitToLoad string, secret finite.Number, hostAddress string) (fi
 		fmt.Println("Preprocessing!")
 		corrupts := (partySize - 1) / 2
 		Preparation.Prepare(circuit, finiteField, corrupts, secretSharing)
+		fmt.Println("Done preprocessing")
 	}
 
-	fmt.Println("Done preprocessing")
+
 
 	startTime := time.Now()
 	result := secretSharing.TheOneRing(circuit, secret, preprocessing)
@@ -281,7 +296,7 @@ func MPCTest(circuitToLoad string, secret finite.Number, hostAddress string) (fi
 	distributeDone()
 	for {
 		doneMutex.Lock()
-		fmt.Println("doneList", doneList)
+		//fmt.Println("doneList", doneList)
 		if len(doneList) == partySize {
 			doneMutex.Unlock()
 			break
@@ -313,7 +328,7 @@ func loadCircuit(file string) {
 func distributeDone() {
 	me := network.GetPartyNumber()
 	for party := 1; party <= partySize; party++ {
-		bundle := numberbundle.NumberBundle{
+		bundlee := numberbundle.NumberBundle{
 			ID:    uuid.Must(uuid.NewRandom()).String(),
 			Type:  "Done",
 			From:  me,
@@ -323,7 +338,7 @@ func distributeDone() {
 			doneList = append(doneList, me)
 			doneMutex.Unlock()
 		}else {
-			network.Send(bundle, party)
+			network.Send(bundlee, party)
 		}
 	}
 

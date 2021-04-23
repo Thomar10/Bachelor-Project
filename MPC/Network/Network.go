@@ -275,7 +275,7 @@ func sendReady2() {
 	if !isHost {
 		peersMutex.Lock()
 		peers = peerOrder
-		fmt.Println("Peers", peers)
+		//fmt.Println("Peers", peers)
 		peersMutex.Unlock()
 	}
 

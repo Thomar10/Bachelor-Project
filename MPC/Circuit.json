@@ -2,7 +2,7 @@
   "PartySize": 3,
   "Field": "Prime",
   "SecretSharing": "Shamir",
-  "Preprocessing": true,
+  "Preprocessing": false,
   "Gate": [
     {
       "GateNumber": 4,
