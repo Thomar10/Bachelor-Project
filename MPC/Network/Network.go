@@ -131,7 +131,7 @@ func InitToHost(networkSize int, hostAddress string) bool {
 
 
 
-	ln, err := net.Listen("tcp", ":")
+	ln, err := net.Listen("tcp", ":40404")
 
 	if err != nil {
 		fmt.Println("Could not listen for incoming connections:", err.Error())
@@ -152,13 +152,13 @@ func InitToHost(networkSize int, hostAddress string) bool {
 	peers = append(peers, myIP)
 	peersMutex.Unlock()
 	isHost = !connect(hostAddress)
-	if isHost {
+	/* if isHost {
 		peersMutex.Lock()
 		peers[0] = hostAddress
 		peersMutex.Unlock()
-		ln, err = net.Listen("tcp", hostAddress)
+		ln, err = net.Listen("tcp", ":40404")
 		myIP = hostAddress
-	}
+	} */
 
 	if err != nil {
 		fmt.Println("Could not listen for incoming connections:", err.Error())
