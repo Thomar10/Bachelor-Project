@@ -94,7 +94,7 @@ func ResetNetwork() {
 	ready2Sent = false
 	isHost = false
 	receiver = []Receiver{}
-	myIP = ""
+	//myIP = ""
 }
 
 func InitWithHostAddress(networkSize int, address string, hostAddress string) bool {
@@ -129,7 +129,11 @@ func InitToHost(networkSize int, hostAddress string) bool {
 
 	gob.Register(numberbundle.NumberBundle{})
 
-	myIP = getPublicIP() + ":40404" 
+	if len(myIP) == 0 {
+		myIP = getPublicIP() + ":40404"
+		fmt.Println("Setting my IP")
+	}
+	
 	peersMutex.Lock()
 	peers = append(peers, myIP)
 	peersMutex.Unlock()
