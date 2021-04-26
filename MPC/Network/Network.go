@@ -129,7 +129,7 @@ func InitToHost(networkSize int, hostAddress string) bool {
 
 	gob.Register(numberbundle.NumberBundle{})
 
-
+	isHost = !connect(hostAddress)
 
 	ln, err := net.Listen("tcp", ":40404")
 
@@ -151,7 +151,6 @@ func InitToHost(networkSize int, hostAddress string) bool {
 	peersMutex.Lock()
 	peers = append(peers, myIP)
 	peersMutex.Unlock()
-	isHost = !connect(hostAddress)
 	/* if isHost {
 		peersMutex.Lock()
 		peers[0] = hostAddress
