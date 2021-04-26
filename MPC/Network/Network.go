@@ -129,6 +129,11 @@ func InitToHost(networkSize int, hostAddress string) bool {
 
 	gob.Register(numberbundle.NumberBundle{})
 
+	myIP = getPublicIP() + ":40404" 
+	peersMutex.Lock()
+	peers = append(peers, myIP)
+	peersMutex.Unlock()
+
 	isHost = !connect(hostAddress)
 
 	ln, err := net.Listen("tcp", ":40404")
@@ -137,27 +142,6 @@ func InitToHost(networkSize int, hostAddress string) bool {
 		fmt.Println("Could not listen for incoming connections:", err.Error())
 		panic(err.Error())
 	}
-
-	_, port, _ := net.SplitHostPort(ln.Addr().String())
-
-	if debug {
-		myIP = getLocalIP() + ":" + port
-	}else {
-		myIP = getPublicIP() + ":" + port
-	}
-
-
-
-	peersMutex.Lock()
-	peers = append(peers, myIP)
-	peersMutex.Unlock()
-	/* if isHost {
-		peersMutex.Lock()
-		peers[0] = hostAddress
-		peersMutex.Unlock()
-		ln, err = net.Listen("tcp", ":40404")
-		myIP = hostAddress
-	} */
 
 	if err != nil {
 		fmt.Println("Could not listen for incoming connections:", err.Error())
