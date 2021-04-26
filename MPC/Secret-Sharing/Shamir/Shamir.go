@@ -446,7 +446,7 @@ func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
 	if (gate.GateNumber % partySize) + 1 == network.GetPartyNumber()  {
 		EDReconstructionCounter++
 		//Reconstruct e
-		fmt.Println("Waiting for e on gate", gate.GateNumber)
+		//fmt.Println("Waiting for e on gate", gate.GateNumber)
 		for {
 			//fmt.Println("Locking eMult")
 			eMultMutex.Lock()
@@ -461,9 +461,10 @@ func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
 		//fmt.Println("Locking eMult")
 		eMultMutex.Lock()
 		eMultGate := eMult[gate.GateNumber]
+		eOpen := Reconstruct(eMultGate)
 		eMultMutex.Unlock()
 		//fmt.Println("Unlocking eMult")
-		eOpen := Reconstruct(eMultGate)
+
 		//Reconstruct d
 		//fmt.Println("Waiting for d on gate", gate.GateNumber)
 		//fmt.Println("Locking dMult")
@@ -480,9 +481,10 @@ func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
 		//fmt.Println("Locking dMult")
 		dMultMutex.Lock()
 		dMultGate := dMult[gate.GateNumber]
+		dOpen := Reconstruct(dMultGate)
 		dMultMutex.Unlock()
 		//fmt.Println("Unlocking dMult")
-		dOpen := Reconstruct(dMultGate)
+
 		distributeED([]finite.Number{eOpen, dOpen}, partySize, gate.GateNumber, true)
 	}
 /*	bundleCounter++

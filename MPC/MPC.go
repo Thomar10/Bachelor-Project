@@ -85,7 +85,7 @@ func main() {
 		for i:= 0; i < 100; i++ {
 			fmt.Println("Im on iteration", i + 1)
 			secretToTest := finite.Number{Prime: big.NewInt(5)}
-			result, timee := MPCTest("Circuit", secretToTest, "192.168.1.100:62123")
+			result, timee := MPCTest("YaoBits20", secretToTest, "192.168.1.100:62123")
 			waitTime = network.GetPartyNumber()
 			fmt.Println("Result", result)
 			fmt.Println("Took", timee)
@@ -286,13 +286,25 @@ func MPCTest(circuitToLoad string, secret finite.Number, hostAddress string) (fi
 		Preparation.Prepare(circuit, finiteField, corrupts, secretSharing)
 		fmt.Println("Done preprocessing")
 	}
+	for {
+		if network.GetPartyNumber() == 1 {
+			secret = finite.Number{Prime: big.NewInt(5), Binary: []int{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+			break
+		}
+		if network.GetPartyNumber() == 2 {
+			secret = finite.Number{Prime: big.NewInt(5), Binary: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+			break
+		}else {
+			secret = finite.Number{Prime: big.NewInt(5), Binary: []int{}}
+			break
+		}
+	}
 
-
-
+	fmt.Println("Im calling the one ring with secret", secret)
 	startTime := time.Now()
 	result := secretSharing.TheOneRing(circuit, secret, preprocessing)
 	endTime := time.Since(startTime)
-
+	fmt.Println("got a result")
 	distributeDone()
 	for {
 		doneMutex.Lock()
