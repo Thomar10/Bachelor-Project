@@ -155,12 +155,16 @@ func main() {
 		if len(os.Args) > 3 {
 			if os.Args[3] == "p" {
 				preprocessing = true
+			} else if os.Args[3] == "r" {
+				randomize = true
 			}
 		}
 
 		if len(os.Args) > 4 {
 			if os.Args[4] == "r" {
 				randomize = true
+			} else if os.Args[4] == "p" {
+				preprocessing = true
 			}
 		}
 
