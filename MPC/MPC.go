@@ -206,8 +206,10 @@ func main() {
 			}
 			if network.GetPartyNumber() == 1 {
 				wasParty1 = true
-				if result.Binary[0] != 1 {
-					panic("Got wrong result for the test")
+				if !randomize && testCircuit == "YaoBits20" {
+					if result.Binary[0] != 1 {
+						panic("Got wrong result for the test")
+					}
 				}
 			}
 			resetTheWholeShit()
