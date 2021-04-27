@@ -175,7 +175,7 @@ func main() {
 			randBinary := make([]int, 20)
 
 			for i := 0; i < len(randBinary); i++ {
-				randBinary[i] = rand.Intn(1)
+				randBinary[i] = rand.Intn(2)
 			}
 
 			secretToTest := finite.Number{Prime: big.NewInt(primeNumber), Binary: []int{}}
