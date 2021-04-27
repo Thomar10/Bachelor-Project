@@ -57,7 +57,7 @@ var sizeSet bool
 var doneList []int
 var myPartyNumber int
 var circuit Circuit.Circuit
-var preprocessing = true
+var preprocessing = false
 var doneMutex = &sync.Mutex{}
 var sizeSetMutex = &sync.Mutex{}
 
