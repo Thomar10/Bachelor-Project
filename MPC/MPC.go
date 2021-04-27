@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/big"
+	"math/rand"
 	"os"
 	"strconv"
 	"sync"
@@ -143,10 +144,55 @@ func main() {
 		var avgTime time.Duration
 		minTime := 9999 * time.Second
 		maxTime := time.Duration(0)
-		testInitNetwork("YaoBit20","3.139.75.92:40404")
+
+		testCircuit := "Circuit"
+		randomize := false
+
+		if len(os.Args) > 2 {
+			testCircuit = os.Args[2]
+		}
+
+		if len(os.Args) > 3 {
+			if os.Args[3] == "p" {
+				preprocessing = true
+			}
+		}
+
+		if len(os.Args) > 4 {
+			if os.Args[4] == "r" {
+				randomize = true
+			}
+		}
+
+		testInitNetwork(testCircuit,"3.139.75.92:40404")
 		for i:= 0; i < 100; i++ {
 			fmt.Println("Im on iteration", i + 1)
-			secretToTest := finite.Number{Prime: big.NewInt(5)}
+			primeNumber := int64(5)
+			if randomize {
+				primeNumber = int64(rand.Intn(10000))
+			}
+
+			randBinary := make([]int, 20)
+
+			for i := 0; i < len(randBinary); i++ {
+				randBinary[i] = rand.Intn(1)
+			}
+
+			secretToTest := finite.Number{Prime: big.NewInt(primeNumber), Binary: []int{}}
+			if network.GetPartyNumber() == 1 {
+				if randomize {
+					secretToTest = finite.Number{Prime: big.NewInt(primeNumber), Binary: randBinary}
+				} else {
+					secretToTest = finite.Number{Prime: big.NewInt(primeNumber), Binary: []int{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+				}
+			} else if network.GetPartyNumber() == 2 {
+				if randomize {
+					secretToTest = finite.Number{Prime: big.NewInt(primeNumber), Binary: randBinary}
+				} else {
+					secretToTest = finite.Number{Prime: big.NewInt(primeNumber), Binary: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+				}
+			}
+
 			result, timee := MPCTest(secretToTest)
 			waitTime = network.GetPartyNumber()
 			fmt.Println("Result", result)
@@ -254,19 +300,6 @@ func MPCTest(secret finite.Number) (finite.Number, time.Duration) {
 		corrupts := (partySize - 1) / 2
 		Preparation.Prepare(circuit, finiteField, corrupts, secretSharing)
 		fmt.Println("Done preprocessing")
-	}
-	for {
-		if network.GetPartyNumber() == 1 {
-			secret = finite.Number{Prime: big.NewInt(5), Binary: []int{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
-			break
-		}
-		if network.GetPartyNumber() == 2 {
-			secret = finite.Number{Prime: big.NewInt(5), Binary: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
-			break
-		}else {
-			secret = finite.Number{Prime: big.NewInt(5), Binary: []int{}}
-			break
-		}
 	}
 
 	fmt.Println("Im calling the one ring with secret", secret)
