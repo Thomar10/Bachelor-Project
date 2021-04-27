@@ -46,8 +46,8 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			}
 			multMap[match.From] = match.Shares[0]
 			gateMult[match.Gate] = multMap
-			//fmt.Println(gateMult)
 			gateMutex.Unlock()
+
 		} else if match.Type == "Result" {
 			resultMutex.Lock()
 			receivedResults = resultGate[match.Gate]
@@ -339,21 +339,22 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 
 func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize int) finite.Number {
 	interMult := field.Mul(input1, input2)
-	//interMult.Mod(interMult, field.GetSize())
 	multShares := field.ComputeShares(partySize, interMult)
 	distributeMultShares(multShares, partySize, gate.GateNumber)
-	//fmt.Println("Waiting to reconstruct")
-	//fmt.Println("There is ", corrupts, " doing the execution")
 	for {
 		gateMutex.Lock()
 		multMaap := gateMult[gate.GateNumber]
 		multMapLen := len(multMaap)
-		gateMutex.Unlock()
-		if multMapLen == 2 * corrupts + 1  {
+		//fmt.Println("Needed len", 2 * corrupts + 1)
+		//fmt.Println("Got", multMapLen)
+		if multMapLen >= 2 * corrupts + 1  {
 			//fmt.Println("im reconstruction with a length of", multMapLen)
 			//fmt.Println(multMaap)
-			return Reconstruct(multMaap)
+			result := Reconstruct(multMaap)
+			gateMutex.Unlock()
+			return result
 		}
+		gateMutex.Unlock()
 	}
 
 

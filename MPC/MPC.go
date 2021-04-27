@@ -60,6 +60,7 @@ var preprocessing = false
 var doneMutex = &sync.Mutex{}
 var sizeSetMutex = &sync.Mutex{}
 var waitTime int
+var wasParty1 = false
 
 
 func resetTheWholeShit() {
@@ -71,21 +72,82 @@ func resetTheWholeShit() {
 	doneList = []int{}
 	doneMutex.Unlock()
 	fmt.Println("Resetting network")
-	network.ResetNetwork()
+	//network.ResetNetwork()
 	Preparation.ResetPrep()
 }
 
+func testInitNetwork(circuitToLoad, hostAddress string) {
+	loadCircuit(circuitToLoad + ".json")
+	if circuit.SecretSharing == "Shamir" {
+		secretSharing = Shamir.Shamir{}
+	} else {
+		secretSharing = Simple_Sharing.Simple_Sharing{}
+	}
+	secretSharing.ResetSecretSharing()
+	if circuit.Field == "Prime" {
+		finiteField = Prime.Prime{}
+	}else {
+		finiteField = Binary.Binary{}
+	}
+	partySize = circuit.PartySize
 
+	preprocessing = circuit.Preprocessing
+	finiteField.InitSeed()
+	bundleType = numberbundle.NumberBundle{}
+
+	receiver := Receiver{}
+	network.RegisterReceiver(receiver)
+	Preparation.RegisterReceiver()
+	secretSharing.RegisterReceiver()
+	isFirst := network.InitToHost(partySize, hostAddress)
+
+	if isFirst {
+		finiteSize := finiteField.GenerateField()
+		switch bundleType.(type) {
+		case numberbundle.NumberBundle:
+			bundleType = numberbundle.NumberBundle{
+				ID:    uuid.Must(uuid.NewRandom()).String(),
+				Type:  "Prime",
+				Prime: finiteSize,
+			}
+		default:
+			fmt.Println(":(")
+		}
+		for {
+			if network.IsReady() {
+				myPartyNumber = network.GetPartyNumber()
+				for i := 1; i <= partySize; i++ {
+					if myPartyNumber != i {
+						network.Send(bundleType, i)
+					}
+				}
+				break
+			}
+		}
+		createField(finiteSize)
+		sizeSet = true
+	}
+
+	for {
+		sizeSetMutex.Lock()
+		sizeSetValue := sizeSet
+		sizeSetMutex.Unlock()
+		if sizeSetValue {
+			break
+		}
+	}
+}
 
 func main() {
 	if os.Args[1] == "test" {
 		var avgTime time.Duration
 		minTime := 9999 * time.Second
 		maxTime := time.Duration(0)
+		testInitNetwork("YaoBits20","192.168.1.100:62123")
 		for i:= 0; i < 100; i++ {
 			fmt.Println("Im on iteration", i + 1)
 			secretToTest := finite.Number{Prime: big.NewInt(5)}
-			result, timee := MPCTest("YaoBits20", secretToTest, "192.168.1.100:62123")
+			result, timee := MPCTest(secretToTest)
 			waitTime = network.GetPartyNumber()
 			fmt.Println("Result", result)
 			fmt.Println("Took", timee)
@@ -96,8 +158,17 @@ func main() {
 			if timee > maxTime {
 				maxTime = timee
 			}
+			if network.GetPartyNumber() == 1 {
+				wasParty1 = true
+				if result.Binary[0] != 1 {
+					panic("Got wrong result for the test")
+				}
+			}
 			resetTheWholeShit()
-			time.Sleep(time.Duration(waitTime) * time.Second)
+			if !wasParty1 {
+				time.Sleep(5 * time.Second)
+			}
+
 		}
 		fmt.Println("It took on average", avgTime / 100)
 		fmt.Println("The lowest runtime", minTime)
@@ -140,47 +211,6 @@ func main() {
 		finiteField.InitSeed()
 		bundleType = numberbundle.NumberBundle{}
 
-		receiver := Receiver{}
-		network.RegisterReceiver(receiver)
-		Preparation.RegisterReceiver()
-		secretSharing.RegisterReceiver()
-
-		isFirst := network.Init(partySize)
-		if isFirst {
-			finiteSize := finiteField.GenerateField()
-			switch bundleType.(type) {
-			case numberbundle.NumberBundle:
-				bundleType = numberbundle.NumberBundle{
-					ID:    uuid.Must(uuid.NewRandom()).String(),
-					Type:  "Prime",
-					Prime: finiteSize,
-				}
-			default:
-				fmt.Println(":(")
-			}
-			for {
-				if network.IsReady() {
-					myPartyNumber = network.GetPartyNumber()
-					for i := 1; i <= partySize; i++ {
-						if myPartyNumber != i {
-							network.Send(bundleType, i)
-						}
-					}
-					break
-				}
-			}
-			createField(finiteSize)
-			sizeSet = true
-		}
-
-		for {
-			sizeSetMutex.Lock()
-			sizeSetValue := sizeSet
-			sizeSetMutex.Unlock()
-			if sizeSetValue {
-				break
-			}
-		}
 
 		if preprocessing {
 			fmt.Println("Preprocessing!")
@@ -217,69 +247,8 @@ func main() {
 }
 
 
-func MPCTest(circuitToLoad string, secret finite.Number, hostAddress string) (finite.Number, time.Duration) {
-	loadCircuit(circuitToLoad + ".json")
-	if circuit.SecretSharing == "Shamir" {
-		secretSharing = Shamir.Shamir{}
-	} else {
-		secretSharing = Simple_Sharing.Simple_Sharing{}
-	}
+func MPCTest(secret finite.Number) (finite.Number, time.Duration) {
 	secretSharing.ResetSecretSharing()
-	if circuit.Field == "Prime" {
-		finiteField = Prime.Prime{}
-	}else {
-		finiteField = Binary.Binary{}
-	}
-	partySize = circuit.PartySize
-
-	preprocessing = circuit.Preprocessing
-	finiteField.InitSeed()
-	bundleType = numberbundle.NumberBundle{}
-
-	receiver := Receiver{}
-	network.RegisterReceiver(receiver)
-	Preparation.RegisterReceiver()
-	secretSharing.RegisterReceiver()
-	//fmt.Println("Im calling with partySize", partySize)
-
-	isFirst := network.InitToHost(partySize, hostAddress)
-
-	if isFirst {
-		finiteSize := finiteField.GenerateField()
-		switch bundleType.(type) {
-		case numberbundle.NumberBundle:
-			bundleType = numberbundle.NumberBundle{
-				ID:    uuid.Must(uuid.NewRandom()).String(),
-				Type:  "Prime",
-				Prime: finiteSize,
-			}
-		default:
-			fmt.Println(":(")
-		}
-		for {
-			if network.IsReady() {
-				myPartyNumber = network.GetPartyNumber()
-				for i := 1; i <= partySize; i++ {
-					if myPartyNumber != i {
-						network.Send(bundleType, i)
-					}
-				}
-				break
-			}
-		}
-		createField(finiteSize)
-		sizeSet = true
-	}
-
-	for {
-		sizeSetMutex.Lock()
-		sizeSetValue := sizeSet
-		sizeSetMutex.Unlock()
-		if sizeSetValue {
-			break
-		}
-	}
-
 	if preprocessing {
 		fmt.Println("Preprocessing!")
 		corrupts := (partySize - 1) / 2

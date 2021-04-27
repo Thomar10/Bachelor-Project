@@ -354,7 +354,6 @@ func listen(ln net.Listener) {
 		go sendPeers(conn)
 		go handleConnection(conn)
 
-		//fmt.Println("I have the following connections:", peers)
 	}
 }
 
