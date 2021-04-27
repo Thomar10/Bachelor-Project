@@ -49,11 +49,9 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			//fmt.Println("I have received bundle prep:", bundle)
 			prepMutex.Lock()
 			randomMap := prepShares[match.Gate]
-			prepMutex.Unlock()
 			if randomMap == nil {
 				initPrepShares(match.Gate)
 			}
-			prepMutex.Lock()
 			//Tager den ud igen fordi jeg er nød til at unlock inden funktionskaldet
 			//Grundet initPrep vil have en lock på samme mutex
 			randomMap = prepShares[match.Gate]
@@ -85,6 +83,7 @@ func ResetPrep() {
 	z = make(map[int]finite.Number)
 	r = make(map[int]finite.Number)
 	r2t = make(map[int]finite.Number)
+
 	prepShares = make(map[int]map[string][]finite.Number)
 	r2tShares = make(map[int]finite.Number)
 	r2tMap = make(map[int]map[int]finite.Number)
@@ -92,10 +91,7 @@ func ResetPrep() {
 	bundleCounter = 1
 }
 
-
-
 func initPrepShares(gate int) {
-	prepMutex.Lock()
 	randomMap := prepShares[gate]
 	if randomMap == nil {
 		randomMap = make(map[string][]finite.Number)
@@ -105,7 +101,6 @@ func initPrepShares(gate int) {
 	randomMap["r"] = listUnFilled(network.GetParties())
 	randomMap["r2t"] = listUnFilled(network.GetParties())
 	prepShares[gate] = randomMap
-	prepMutex.Unlock()
 }
 
 func RegisterReceiver() {
@@ -134,12 +129,6 @@ func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir 
 			r[j+i] = rList[j]
 			r2t[j+i] = r2tList[j]
 		}
-
-		//y = append(y, createRandomTuple(partySize, field, corrupts)...)
-		//x = append(x, createRandomTuple(partySize, field, corrupts)...)
-
-		//r = append(y, createRandomTuple(partySize, field, corrupts)...)
-		//r2t = append(x, createRandomTuple(2*partySize, field, corrupts)...)
 	}
 
 	//Making sure there is enough y's
@@ -325,11 +314,9 @@ func distributeShares(shares []finite.Number, partySize int, gate int, randomTyp
 			//fmt.Println("Im sending", shareBundle, "to", party, "from", network.GetPartyNumber())
 			prepMutex.Lock()
 			randomMap := prepShares[gate]
-			prepMutex.Unlock()
 			if randomMap == nil {
 				initPrepShares(gate)
 			}
-			prepMutex.Lock()
 			randomMap = prepShares[gate]
 			list := randomMap[randomType]
 			list[party-1] = shares[party-1]
