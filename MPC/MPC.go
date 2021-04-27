@@ -85,7 +85,7 @@ func main() {
 		for i:= 0; i < 100; i++ {
 			fmt.Println("Im on iteration", i + 1)
 			secretToTest := finite.Number{Prime: big.NewInt(5)}
-			result, timee := MPCTest("Circuit", secretToTest, "3.139.75.92:40404")
+			result, timee := MPCTest("YaoBits20", secretToTest, "3.139.75.92:40404")
 			waitTime = network.GetPartyNumber()
 			fmt.Println("Result", result)
 			fmt.Println("Took", timee)
