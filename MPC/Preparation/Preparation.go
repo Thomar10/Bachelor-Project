@@ -286,16 +286,16 @@ func createHyperMatrix(partySize int, field finite.Finite) {
 	}
 }
 
-func extractRandomness(x []finite.Number, matrix [][]finite.Number, field finite.Finite, corrupts int) []finite.Number {
-	ye := make([]finite.Number, len(x))
+func extractRandomness(xVec []finite.Number, matrix [][]finite.Number, field finite.Finite, corrupts int) []finite.Number {
+	ye := make([]finite.Number, len(xVec))
 	for i := 0; i < len(matrix); i++ {
 		ye[i] = finite.Number{Prime: big.NewInt(0), Binary: Binary.ConvertXToByte(0)}
 		for j := 0; j < len(matrix[i]); j++ {
-			ye[i] = field.Add(ye[i], field.Mul(matrix[i][j], x[j]))
-			//y[i] = y[i] + matrix[i][j] * x[j]
+			ye[i] = field.Add(ye[i], field.Mul(matrix[i][j], xVec[j]))
+			//y[i] = y[i] + matrix[i][j] * xVec[j]
 		}
 	}
-	return ye //ye[:len(x) - corrupts]
+	return ye[:len(xVec) - corrupts]
 }
 
 func distributeShares(shares []finite.Number, partySize int, gate int, randomType string) {

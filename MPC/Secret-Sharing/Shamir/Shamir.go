@@ -215,7 +215,11 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 
 	outputGates := outputSize(circuit)
 	fmt.Println("Im party ", network.GetPartyNumber())
+
 	for {
+		wiresMutex.Lock()
+		//fmt.Println("Wires", wires)
+		wiresMutex.Unlock()
 		for i, gate := range circuit.Gates {
 			wiresMutex.Lock()
 			input1, found1 := wires[gate.Input_one]

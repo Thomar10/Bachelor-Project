@@ -59,21 +59,21 @@ var circuit Circuit.Circuit
 var preprocessing = false
 var doneMutex = &sync.Mutex{}
 var sizeSetMutex = &sync.Mutex{}
-var waitTime int
-var wasParty1 = false
 
 
-func resetTheWholeShit() {
-	sizeSetMutex.Lock()
-	sizeSet = false
-	sizeSetMutex.Unlock()
+
+func resetTheWholeShit(circuitToLoad string) {
+	//sizeSetMutex.Lock()
+	//sizeSet = false
+	//sizeSetMutex.Unlock()
 	fmt.Println("Resetting done list")
 	doneMutex.Lock()
 	doneList = []int{}
 	doneMutex.Unlock()
-	fmt.Println("Resetting network")
 	//network.ResetNetwork()
 	Preparation.ResetPrep()
+	secretSharing.ResetSecretSharing()
+	loadCircuit(circuitToLoad + ".json")
 }
 
 func testInitNetwork(circuitToLoad, hostAddress string) {
@@ -148,7 +148,7 @@ func main() {
 			fmt.Println("Im on iteration", i + 1)
 			secretToTest := finite.Number{Prime: big.NewInt(5)}
 			result, timee := MPCTest(secretToTest)
-			waitTime = network.GetPartyNumber()
+
 			fmt.Println("Result", result)
 			fmt.Println("Took", timee)
 			avgTime += timee
@@ -158,16 +158,10 @@ func main() {
 			if timee > maxTime {
 				maxTime = timee
 			}
-			if network.GetPartyNumber() == 1 {
-				wasParty1 = true
-				if result.Binary[0] != 1 {
-					panic("Got wrong result for the test")
-				}
-			}
-			resetTheWholeShit()
-			if !wasParty1 {
-				time.Sleep(5 * time.Second)
-			}
+
+			resetTheWholeShit("YaoBits20")
+			time.Sleep(10 * time.Second)
+
 
 		}
 		fmt.Println("It took on average", avgTime / 100)
@@ -229,7 +223,6 @@ func main() {
 		for {
 			doneMutex.Lock()
 			if len(doneList) == partySize {
-				fmt.Println("Donelist", doneList)
 				break
 			}
 			doneMutex.Unlock()
@@ -248,7 +241,7 @@ func main() {
 
 
 func MPCTest(secret finite.Number) (finite.Number, time.Duration) {
-	secretSharing.ResetSecretSharing()
+
 	if preprocessing {
 		fmt.Println("Preprocessing!")
 		corrupts := (partySize - 1) / 2
