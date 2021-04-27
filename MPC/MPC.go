@@ -148,6 +148,8 @@ func main() {
 			testCircuit = os.Args[2]
 		}
 
+		testInitNetwork(testCircuit,"3.139.75.92:40404")
+
 		if len(os.Args) > 3 {
 			if os.Args[3] == "p" {
 				preprocessing = true
@@ -164,7 +166,6 @@ func main() {
 			}
 		}
 
-		testInitNetwork(testCircuit,"3.139.75.92:40404")
 		for i:= 0; i < 100; i++ {
 			fmt.Println("Im on iteration", i + 1)
 			primeNumber := int64(5)
