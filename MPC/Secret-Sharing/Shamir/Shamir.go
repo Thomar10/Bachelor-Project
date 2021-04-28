@@ -179,6 +179,12 @@ func (s Shamir) RegisterReceiver() {
 	network.RegisterReceiver(receiver)
 }
 
+type readyGate struct {
+	gate Circuit.Gate
+	input1 finite.Number
+	input2 finite.Number
+	index int
+}
 
 func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, preprocessed bool) finite.Number {
 	corrupts = (network.GetParties() - 1) / 2
@@ -216,6 +222,36 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 	outputGates := outputSize(circuit)
 	fmt.Println("Im party ", network.GetPartyNumber())
 	for {
+
+		readyGates := make([]readyGate, 0)
+
+		wiresMutex.Lock()
+		for i, gate := range circuit.Gates {
+			input1, found1 := wires[gate.Input_one]
+			input2, found2 := wires[gate.Input_two]
+
+			if found1 && found2 || found1 && gate.Input_two == 0 {
+				ready := readyGate{gate, input1, input2, i}
+				readyGates = append(readyGates, ready)
+				//circuit.Gates = removeGate(circuit, gate, i)
+			}
+		}
+		wiresMutex.Unlock()
+
+		for i := len(readyGates) - 1; i >= 0; i-- {
+			ready := readyGates[i]
+			//fmt.Println("Gate ready:", ready.gate)
+			circuit.Gates = removeGate(circuit, ready.gate, ready.index)
+			go evalGate(ready.gate, ready.input1, ready.input2, preprocessed, partySize)
+		}
+		/*
+		for i, ready := range readyGates {
+			fmt.Println("Gate ready:", ready.gate)
+			circuit.Gates = removeGate(circuit, ready.gate, ready.index)
+			go evalGate(ready.gate, ready.input1, ready.input2, preprocessed, partySize)
+		}*/
+
+		/*
 		for i, gate := range circuit.Gates {
 			wiresMutex.Lock()
 			input1, found1 := wires[gate.Input_one]
@@ -232,6 +268,8 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 				break
 			}
 		}
+		*/
+
 		var done = false
 		if len(circuit.Gates) != 0 {
 			continue

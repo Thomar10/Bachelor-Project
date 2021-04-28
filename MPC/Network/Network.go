@@ -130,7 +130,11 @@ func InitToHost(networkSize int, hostAddress string) bool {
 	gob.Register(numberbundle.NumberBundle{})
 
 	if len(myIP) == 0 {
-		myIP = getPublicIP() + ":40404"
+		if debug {
+			myIP = getLocalIP() + ":40404"
+		} else {
+			myIP = getPublicIP() + ":40404"
+		}
 		fmt.Println("Setting my IP")
 	}
 	
