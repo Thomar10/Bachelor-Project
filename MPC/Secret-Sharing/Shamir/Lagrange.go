@@ -32,6 +32,7 @@ import (
 }*/
 
 func Reconstruct(shares map[int]finite.Number) finite.Number {
+	//fmt.Println("Im reconstructing with", shares)
 	keys := reflect.ValueOf(shares).MapKeys()
 	var keysArray []int
 	for _, k := range keys {

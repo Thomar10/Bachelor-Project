@@ -206,13 +206,56 @@ func main() {
 		bundleType = numberbundle.NumberBundle{}
 
 
+		receiver := Receiver{}
+		network.RegisterReceiver(receiver)
+		Preparation.RegisterReceiver()
+		secretSharing.RegisterReceiver()
+		isFirst := network.Init(partySize)
+
+		if isFirst {
+			finiteSize := finiteField.GenerateField()
+			switch bundleType.(type) {
+			case numberbundle.NumberBundle:
+				bundleType = numberbundle.NumberBundle{
+					ID:    uuid.Must(uuid.NewRandom()).String(),
+					Type:  "Prime",
+					Prime: finiteSize,
+				}
+			default:
+				fmt.Println(":(")
+			}
+			for {
+				if network.IsReady() {
+					myPartyNumber = network.GetPartyNumber()
+					for i := 1; i <= partySize; i++ {
+						if myPartyNumber != i {
+							network.Send(bundleType, i)
+						}
+					}
+					break
+				}
+			}
+			createField(finiteSize)
+			sizeSet = true
+		}
+
+		for {
+			sizeSetMutex.Lock()
+			sizeSetValue := sizeSet
+			sizeSetMutex.Unlock()
+			if sizeSetValue {
+				break
+			}
+		}
+
 		if preprocessing {
 			fmt.Println("Preprocessing!")
 			corrupts := (partySize - 1) / 2
 			Preparation.Prepare(circuit, finiteField, corrupts, secretSharing)
+			fmt.Println("Done preprocessing")
 		}
 
-		fmt.Println("Done preprocessing")
+
 		fmt.Println("I am party", network.GetPartyNumber())
 
 		startTime := time.Now()
@@ -223,6 +266,7 @@ func main() {
 		for {
 			doneMutex.Lock()
 			if len(doneList) == partySize {
+				doneMutex.Unlock()
 				break
 			}
 			doneMutex.Unlock()
@@ -242,12 +286,15 @@ func main() {
 
 func MPCTest(secret finite.Number) (finite.Number, time.Duration) {
 
+	prepTime := time.Now()
 	if preprocessing {
 		fmt.Println("Preprocessing!")
 		corrupts := (partySize - 1) / 2
 		Preparation.Prepare(circuit, finiteField, corrupts, secretSharing)
 		fmt.Println("Done preprocessing")
 	}
+	fmt.Println("PrepTime took", time.Since(prepTime))
+
 	for {
 		if network.GetPartyNumber() == 1 {
 			secret = finite.Number{Prime: big.NewInt(5), Binary: []int{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}

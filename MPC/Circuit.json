@@ -1,8 +1,8 @@
 {
-  "PartySize": 10,
+  "PartySize": 4,
   "Field": "Prime",
   "SecretSharing": "Shamir",
-  "Preprocessing": true,
+  "Preprocessing": false,
   "Gate": [
     {
       "GateNumber": 4,
