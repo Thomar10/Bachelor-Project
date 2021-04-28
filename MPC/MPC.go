@@ -166,7 +166,7 @@ func main() {
 			}
 		}
 
-		for i:= 0; i < 100; i++ {
+		for i:= 0; i < 50; i++ {
 			fmt.Println("Im on iteration", i + 1)
 			primeNumber := int64(5)
 			if randomize {
@@ -208,7 +208,7 @@ func main() {
 			resetTheWholeShit(testCircuit)
 			time.Sleep(5 * time.Second)
 		}
-		fmt.Println("It took on average", avgTime / 100)
+		fmt.Println("It took on average", avgTime / 50)
 		fmt.Println("The lowest runtime", minTime)
 		fmt.Println("The highest runtime", maxTime)
 
