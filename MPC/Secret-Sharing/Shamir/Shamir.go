@@ -222,8 +222,8 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 			input2, found2 := wires[gate.Input_two]
 			wiresMutex.Unlock()
 			if found1 && found2 || found1 && gate.Input_two == 0 {
-				//fmt.Println("Gate ready")
-				//fmt.Println(gate)
+				fmt.Println("Gate ready")
+				fmt.Println(gate)
 				var output finite.Number
 				switch gate.Operation {
 				case "Addition":
