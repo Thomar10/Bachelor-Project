@@ -224,42 +224,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 			if found1 && found2 || found1 && gate.Input_two == 0 {
 				fmt.Println("Gate ready")
 				fmt.Println(gate)
-				var output finite.Number
-				switch gate.Operation {
-				case "Addition":
-					output = field.Add(input1, input2)
-					wiresMutex.Lock()
-					wires[gate.GateNumber] = output
-					wiresMutex.Unlock()
-				case "Multiplication":
-					if preprocessed  {
-						if true {
-							//fmt.Println(wires)
-							output = processedMultReturn(input1, input2, gate, partySize)
-							wiresMutex.Lock()
-							wires[gate.GateNumber] = output
-							wiresMutex.Unlock()
-						}else {
-							go processedMult(input1, input2, gate, partySize)
-						}
-					}else {
-						output = nonProcessedMult(input1, input2, gate, partySize)
-						wiresMutex.Lock()
-						wires[gate.GateNumber] = output
-						wiresMutex.Unlock()
-					}
-
-				case "Output":
-					distributeResult([]finite.Number{input1}, gate.Output, gate.GateNumber)
-
-				case "Multiply-Constant":
-					constantString := gate.Input_constant
-					constant := field.GetConstant(constantString)
-					output = field.Mul(input1, constant)
-					wiresMutex.Lock()
-					wires[gate.GateNumber] = output
-					wiresMutex.Unlock()
-				}
+				go evalGate(gate, input1, input2, preprocessed, partySize)
 
 				//Remove gate from circuits.gates
 				circuit.Gates = removeGate(circuit, gate, i)
@@ -272,60 +237,60 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 			continue
 		}
 		switch field.(type) {
-			case Prime.Prime:
-				for {
-					resultMutex.Lock()
-					resultLen := len(resultGate)
-					resultMutex.Unlock()
-					if resultLen > 0 {
-						break
-					}
-					if outputGates == 0 {
-						//No outputs for this party - return 0
-						result.Prime = big.NewInt(0)
-						//fmt.Println("I reconstructed ED", EDReconstructionCounter, "times")
-						return result
-					}
-				}
+		case Prime.Prime:
+			for {
 				resultMutex.Lock()
-				keys := reflect.ValueOf(resultGate).MapKeys()
-				key := keys[0]
-				if len(resultGate[(key.Interface()).(int)]) >= corrupts + 1 { //var == før
-					result = Reconstruct(resultGate[(key.Interface()).(int)])
-					done = true
-				}
+				resultLen := len(resultGate)
 				resultMutex.Unlock()
-			case Binary.Binary:
-				if outputGates > 0 {
-					trueResult := make([]int, outputGates)
-					if len(resultGate) == outputGates {
-						keys := reflect.ValueOf(resultGate).MapKeys()
-						var keysArray []int
-						for _, k := range keys {
-							keysArray = append(keysArray, (k.Interface()).(int))
-						}
-						sort.Ints(keysArray)
-						for i, k := range keysArray {
-							for {
+				if resultLen > 0 {
+					break
+				}
+				if outputGates == 0 {
+					//No outputs for this party - return 0
+					result.Prime = big.NewInt(0)
+					//fmt.Println("I reconstructed ED", EDReconstructionCounter, "times")
+					return result
+				}
+			}
+			resultMutex.Lock()
+			keys := reflect.ValueOf(resultGate).MapKeys()
+			key := keys[0]
+			if len(resultGate[(key.Interface()).(int)]) >= corrupts+1 { //var == før
+				result = Reconstruct(resultGate[(key.Interface()).(int)])
+				done = true
+			}
+			resultMutex.Unlock()
+		case Binary.Binary:
+			if outputGates > 0 {
+				trueResult := make([]int, outputGates)
+				if len(resultGate) == outputGates {
+					keys := reflect.ValueOf(resultGate).MapKeys()
+					var keysArray []int
+					for _, k := range keys {
+						keysArray = append(keysArray, (k.Interface()).(int))
+					}
+					sort.Ints(keysArray)
+					for i, k := range keysArray {
+						for {
+							resultMutex.Lock()
+							resultMapLen := len(resultGate[k])
+							resultMutex.Unlock()
+							if resultMapLen >= corrupts+1 {
 								resultMutex.Lock()
-								resultMapLen := len(resultGate[k])
+								resultBit := Reconstruct(resultGate[k]).Binary[7]
+								trueResult[i] = resultBit
 								resultMutex.Unlock()
-								if resultMapLen >= corrupts + 1  {
-									resultMutex.Lock()
-									resultBit := Reconstruct(resultGate[k]).Binary[7]
-									trueResult[i] = resultBit
-									resultMutex.Unlock()
-									break
-								}
+								break
 							}
 						}
-						result = finite.Number{Binary: trueResult}
-						done = true
 					}
-				} else {
-					result = finite.Number{Binary: []int{0}}
+					result = finite.Number{Binary: trueResult}
 					done = true
 				}
+			} else {
+				result = finite.Number{Binary: []int{0}}
+				done = true
+			}
 		}
 		if done {
 			break
@@ -334,6 +299,45 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 
 	//fmt.Println("I reconstructed ED", EDReconstructionCounter, "times")
 	return result
+}
+
+func evalGate(gate Circuit.Gate, input1 finite.Number, input2 finite.Number, preprocessed bool, partySize int) {
+	var output finite.Number
+	switch gate.Operation {
+	case "Addition":
+		output = field.Add(input1, input2)
+		wiresMutex.Lock()
+		wires[gate.GateNumber] = output
+		wiresMutex.Unlock()
+	case "Multiplication":
+		if preprocessed {
+			if true {
+				//fmt.Println(wires)
+				output = processedMultReturn(input1, input2, gate, partySize)
+				wiresMutex.Lock()
+				wires[gate.GateNumber] = output
+				wiresMutex.Unlock()
+			} else {
+				go processedMult(input1, input2, gate, partySize)
+			}
+		} else {
+			output = nonProcessedMult(input1, input2, gate, partySize)
+			wiresMutex.Lock()
+			wires[gate.GateNumber] = output
+			wiresMutex.Unlock()
+		}
+
+	case "Output":
+		distributeResult([]finite.Number{input1}, gate.Output, gate.GateNumber)
+
+	case "Multiply-Constant":
+		constantString := gate.Input_constant
+		constant := field.GetConstant(constantString)
+		output = field.Mul(input1, constant)
+		wiresMutex.Lock()
+		wires[gate.GateNumber] = output
+		wiresMutex.Unlock()
+	}
 }
 
 
