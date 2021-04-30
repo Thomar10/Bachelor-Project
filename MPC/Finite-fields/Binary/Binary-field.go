@@ -14,7 +14,7 @@ type Binary struct {
 var convMutex = &sync.Mutex{}
 
 
-func (p Binary) FilledUp(numbers []finite.Number) bool {
+func (b Binary) FilledUp(numbers []finite.Number) bool {
 	for _, number := range numbers {
 		if number.Binary[0] == -1 {
 			return false
@@ -34,6 +34,25 @@ func (b Binary) InitSeed() {
 	field = finite.Number{Binary: make([]int, 8)}
 	rand.Seed(time.Now().UnixNano())
 }
+
+func (b Binary) CompareEqNumbers(share, polyShare finite.Number) bool {
+	for i, s := range share.Binary {
+		if s != polyShare.Binary[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (b Binary) CalcPoly(poly []finite.Number, x int) finite.Number {
+	polyBig := make([][]int, len(poly))
+	for i, _ := range poly {
+		polyBig[i] = poly[i].Binary
+	}
+	result := calculatePolynomial(polyBig, x)
+	return finite.Number{Binary: result}
+}
+
 
 func (b Binary) SetSize(f finite.Number) {
 	field = f
@@ -89,6 +108,7 @@ func ConvertXToByte(x int) []int {
 	result := reverse(intToBinaryArray(x, 8))
 	return result
 }
+
 
 func calculatePolynomial(polynomial [][]int, x int) []int {
 	//fmt.Println("polynomial", polynomial)

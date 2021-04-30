@@ -15,6 +15,8 @@ type Finite interface {
 	FindInverse(a, prime Number) Number
 	GetConstant(constantString int) Number
 	FilledUp([]Number) bool
+	CalcPoly(poly []Number, x int) Number
+	CompareEqNumbers(share, polyShare Number) bool
 }
 type Number struct {
 	Prime *big.Int
