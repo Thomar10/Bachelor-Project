@@ -52,8 +52,6 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			if randomMap == nil {
 				initPrepShares(match.Gate)
 			}
-			//Tager den ud igen fordi jeg er nød til at unlock inden funktionskaldet
-			//Grundet initPrep vil have en lock på samme mutex
 			randomMap = prepShares[match.Gate]
 			list := randomMap[match.Random]
 			list[match.From-1] = match.Shares[0]
@@ -108,33 +106,97 @@ func RegisterReceiver() {
 	network.RegisterReceiver(receiver)
 }
 
-func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir secretsharing.Secret_Sharing) {
-	fmt.Println("Im party!", network.GetPartyNumber())
+
+
+func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir secretsharing.Secret_Sharing, active bool) {
 	partySize := circuit.PartySize
 	createHyperMatrix(partySize, field)
 	multiGates := countMultiGates(circuit)
 
+	if active {
+		triplesActive(multiGates, partySize, corrupts, field)
+	}else {
+		triplesPassive(multiGates, partySize, corrupts, field)
+	}
+
+	fmt.Println("The triples")
+	fmt.Println("x", x)
+	fmt.Println("y", y)
+	fmt.Println("z", z)
+	shamir.SetTriple(x, y, z)
+}
+
+func triplesActive(multiGates int, partySize int, corrupts int, field finite.Finite) {
+	for i := 1; i <= multiGates; i += corrupts * partySize * (partySize - corrupts - 1) {
+		for j := 1; j <= partySize; j++ {
+			random := createRandomNumber(field)
+			yList := createRandomTuple(partySize, field, corrupts, j + partySize * (i - 1), random, "y", true)
+			random = createRandomNumber(field)
+			xList := createRandomTuple(partySize, field, corrupts, i, random, "x", true)
+			random = createRandomNumber(field)
+			rList := createRandomTuple(partySize, field, corrupts, i, random, "r", true)
+			r2tList := createRandomTuple(2*partySize, field, corrupts, i, random, "r2t", true)
+			//check om listerne er konsistente
+
+			//en liste er ikke consistent (dø)
+
+			//alle er konsistente
+			for k, _ := range yList[2 * corrupts:] {
+				inputPlace :=  k + (partySize - corrupts - 1) * (j - 1) + (i - 1) + 1
+				y[inputPlace] = yList[k]
+				x[inputPlace] = xList[k]
+				r[inputPlace] = rList[k]
+				r2t[inputPlace] = r2tList[k]
+			}
+			//No reason to create too many tuples
+			if len(y) >= multiGates {
+				break
+			}
+		}
+		//No reason to create too many tuples
+		if len(y) >= multiGates {
+			break
+		}
+
+	}
+
+	//Calculate z in the triple
+	k := len(y)
+	for i := 1; i <= k; i++ {
+		xy := field.Mul(x[i], y[i])
+		r2tInv := field.Mul(r2t[i], finite.Number{
+			Prime:  big.NewInt(-1),
+			Binary: []int{0, 0, 0, 0, 0, 0, 0, 1}, //-1
+		})
+		xyr2t := field.Add(xy, r2tInv)
+		reconstructR2T(xyr2t, partySize, i)
+		for {
+			r2tOpenMutex.Lock()
+			xyr, found := r2tOpen[i]
+			r2tOpenMutex.Unlock()
+			if found {
+				resZ := field.Add(r[i], xyr)
+				z[i] = resZ
+				break
+			}
+		}
+	}
+}
+
+func triplesPassive(multiGates int, partySize int, corrupts int, field finite.Finite) {
 	for i := 1; i <= multiGates; i += partySize - corrupts {
 		random := createRandomNumber(field)
-		yList := createRandomTuple(partySize, field, corrupts, i, random, "y")
+		yList := createRandomTuple(partySize, field, corrupts, i, random, "y", false)
 		random = createRandomNumber(field)
-		xList := createRandomTuple(partySize, field, corrupts, i, random, "x")
+		xList := createRandomTuple(partySize, field, corrupts, i, random, "x", false)
 		random = createRandomNumber(field)
-		//fmt.Println("Random number", random)
-		rList := createRandomTuple(partySize, field, corrupts, i, random, "r")
-		r2tList := createRandomTuple(2*partySize, field, corrupts, i, random, "r2t")
+		rList := createRandomTuple(partySize, field, corrupts, i, random, "r", false)
+		r2tList := createRandomTuple(2*partySize, field, corrupts, i, random, "r2t", false)
 		for j, _ := range yList {
 			y[j+i] = yList[j]
 			x[j+i] = xList[j]
 			r[j+i] = rList[j]
 			r2t[j+i] = r2tList[j]
-		}
-	}
-
-	//Making sure there is enough y's
-	for {
-		if len(y) >= multiGates {
-			break
 		}
 	}
 	//Calculate z in the triple
@@ -158,7 +220,6 @@ func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir 
 			}
 		}
 	}
-	shamir.SetTriple(x, y, z)
 }
 
 func reconstructR2T(xyr2t finite.Number, partySize int, i int) {
@@ -202,7 +263,7 @@ func listUnFilled(size int) []finite.Number {
 	return list
 }
 
-func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, number finite.Number, randomType string) []finite.Number {
+func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, number finite.Number, randomType string, active bool) []finite.Number {
 	randomShares := field.ComputeShares(partySize, number)
 	distributeShares(randomShares, network.GetParties(), i, randomType)
 	for {
@@ -219,9 +280,11 @@ func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, 
 	xShares = prepShares[i][randomType]
 	prepMutex.Unlock()
 
-	randomness := extractRandomness(xShares, matrix, field, corrupts)
+	randomness := extractRandomness(xShares, matrix, field, corrupts, active)
 	return randomness
 }
+
+
 
 func listFilledUp(list []finite.Number, field finite.Finite) bool {
 	return field.FilledUp(list)
@@ -286,7 +349,7 @@ func createHyperMatrix(partySize int, field finite.Finite) {
 	}
 }
 
-func extractRandomness(xVec []finite.Number, matrix [][]finite.Number, field finite.Finite, corrupts int) []finite.Number {
+func extractRandomness(xVec []finite.Number, matrix [][]finite.Number, field finite.Finite, corrupts int, active bool) []finite.Number {
 	ye := make([]finite.Number, len(xVec))
 	for i := 0; i < len(matrix); i++ {
 		ye[i] = finite.Number{Prime: big.NewInt(0), Binary: Binary.ConvertXToByte(0)}
@@ -295,7 +358,11 @@ func extractRandomness(xVec []finite.Number, matrix [][]finite.Number, field fin
 			//y[i] = y[i] + matrix[i][j] * xVec[j]
 		}
 	}
-	return ye[:len(xVec) - corrupts]
+	if active {
+		return ye
+	}else {
+		return ye[:len(xVec) - corrupts]
+	}
 }
 
 func distributeShares(shares []finite.Number, partySize int, gate int, randomType string) {

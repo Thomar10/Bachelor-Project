@@ -250,8 +250,8 @@ func main() {
 
 		if preprocessing {
 			fmt.Println("Preprocessing!")
-			corrupts := (partySize - 1) / 2
-			Preparation.Prepare(circuit, finiteField, corrupts, secretSharing)
+			corrupts := (partySize - 1) / 3
+			Preparation.Prepare(circuit, finiteField, corrupts, secretSharing, true)
 			fmt.Println("Done preprocessing")
 		}
 
@@ -290,7 +290,7 @@ func MPCTest(secret finite.Number) (finite.Number, time.Duration) {
 	if preprocessing {
 		fmt.Println("Preprocessing!")
 		corrupts := (partySize - 1) / 2
-		Preparation.Prepare(circuit, finiteField, corrupts, secretSharing)
+		Preparation.Prepare(circuit, finiteField, corrupts, secretSharing, true)
 		fmt.Println("Done preprocessing")
 	}
 	fmt.Println("PrepTime took", time.Since(prepTime))

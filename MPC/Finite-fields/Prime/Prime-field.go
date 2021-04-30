@@ -3,7 +3,6 @@ package Prime
 import (
 	Finite_fields "MPC/Finite-fields"
 	crand "crypto/rand"
-	"fmt"
 	"math/big"
 	"sync"
 )
@@ -57,7 +56,6 @@ func (p Prime) ComputeShares(parties int, secret Finite_fields.Number) []Finite_
 	for i := 0; i < len(result); i++ {
 		result[i] = Finite_fields.Number{Prime: shares[i]}
 	}
-	fmt.Println("My polynomial is ", polynomial)
 	return result
 }
 
