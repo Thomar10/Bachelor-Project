@@ -162,7 +162,7 @@
     },
     {
       "GateNumber": 99,
-      "Input_one": 4,
+      "Input_one": 5,
       "Output": 1,
       "Operation": "Output"
     },
