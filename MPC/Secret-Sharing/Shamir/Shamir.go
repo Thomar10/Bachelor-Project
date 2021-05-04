@@ -201,13 +201,13 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 
 	outputGates := outputSize(circuit)
 	for {
-		wiresMutex.Lock()
-		wiresMutex.Unlock()
 		for i, gate := range circuit.Gates {
 			wiresMutex.Lock()
 			input1, found1 := wires[gate.Input_one]
 			input2, found2 := wires[gate.Input_two]
 			wiresMutex.Unlock()
+			//Found1 and found2 if for multiplication and addition gates
+			//Found1 and input2 = 0 is for multiply-with-constant and output gates
 			if found1 && found2 || found1 && gate.Input_two == 0 {
 				var output finite.Number
 				switch gate.Operation {
@@ -218,6 +218,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 					wiresMutex.Unlock()
 				case "Multiplication":
 					if preprocessed  {
+						//Turn false for concurrent multiplication
 						if true {
 							output = processedMultReturn(input1, input2, gate, partySize)
 							wiresMutex.Lock()
