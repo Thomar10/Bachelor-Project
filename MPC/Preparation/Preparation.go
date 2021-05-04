@@ -78,7 +78,6 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			r2tOpen[match.Gate] = match.Shares[0]
 			r2tOpenMutex.Unlock()
 		} else if match.Type == "CheckSharesXY" {
-			fmt.Println("I got a checkShare!")
 			checkShareXMutex.Lock()
 			checkXMap := checkShareMapX[match.Gate]
 			if checkXMap == nil {

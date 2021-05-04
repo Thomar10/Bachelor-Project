@@ -28,13 +28,9 @@ type Receiver struct {
 
 
 func (r Receiver) Receive(bundle bundle.Bundle) {
-	//fmt.Println("I have received bundle shamir:", bundle)
 	switch match := bundle.(type) {
 	case numberbundle.NumberBundle:
-		//fmt.Println("Received bundle", match)
-		//fmt.Println("Received bundle:", bundle)
 		if match.Type == "Share"{
-			//fmt.Println("I got share", match)
 			wiresMutex.Lock()
 			wires[match.Gate] = match.Shares[0]
 			wiresMutex.Unlock()
@@ -59,8 +55,6 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			resultGate[match.Gate] = receivedResults
 			resultMutex.Unlock()
 		}else if match.Type == "EDShare" {
-			//fmt.Println("Got a EDShare", match)
-			//fmt.Println("Locking eMult in rec")
 			eMultMutex.Lock()
 			eMultMap := eMult[match.Gate]
 			if eMultMap == nil {
@@ -69,8 +63,6 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			eMultMap[match.From] = match.Shares[0]
 			eMult[match.Gate] = eMultMap
 			eMultMutex.Unlock()
-			//fmt.Println("Unlocking eMult in rec")
-			//fmt.Println("Locking dMult in rec")
 			dMultMutex.Lock()
 			dMultMap := dMult[match.Gate]
 			if dMultMap == nil {
@@ -79,25 +71,20 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			dMultMap[match.From] = match.Shares[1]
 			dMult[match.Gate] = dMultMap
 			dMultMutex.Unlock()
-			//fmt.Println("Unlocking dMult in rec")
 		} else if match.Type == "EDResult" {
-			//fmt.Println("Locking eOpen in rec")
 			eOpenMutex.Lock()
 			eOpenMap[match.Gate] = match.Shares[0]
 			eOpenMutex.Unlock()
-			//fmt.Println("Unlocking eOpen in rec")
-			//fmt.Println("Locking dOpen in rec")
+
 			dOpenMutex.Lock()
 			dOpenMap[match.Gate] = match.Shares[1]
 			dOpenMutex.Unlock()
-			//fmt.Println("Unlocking dOpen in rec")
 		}
 	}
 }
 
 var function string
 var wires = make(map[int]finite.Number)
-//var multMap = make(map[int]finite.Number)
 var gateMult = make(map[int]map[int]finite.Number)
 var eMult = make(map[int]map[int]finite.Number)
 var dMult = make(map[int]map[int]finite.Number)
@@ -114,6 +101,7 @@ var resultGate = make(map[int]map[int]finite.Number)
 var receivedResults = make(map[int]finite.Number)
 var corrupts = 0
 var tripleCounter = 1
+var field finite.Finite
 var x = make(map[int]finite.Number)
 var y = make(map[int]finite.Number)
 var z = make(map[int]finite.Number)
@@ -124,7 +112,6 @@ var EDReconstructionCounter = 0
 func (s Shamir) ResetSecretSharing() {
 	function = ""
 	wires = make(map[int]finite.Number)
-	//var multMap = make(map[int]finite.Number)
 	gateMult = make(map[int]map[int]finite.Number)
 	eMult = make(map[int]map[int]finite.Number)
 	dMult = make(map[int]map[int]finite.Number)
@@ -153,30 +140,30 @@ func (s Shamir) ComputeShares(parties int, secret finite.Number) []finite.Number
 
 func (s Shamir) ComputeResult(results []finite.Number) finite.Number {
 	panic("implement meeeeeeeeeeeeeeeeeeeeee!")
-	//return Reconstruct(shares)
 }
 
-var field finite.Finite
 
 func (s Shamir) SetField(f finite.Finite) {
 	field = f
 }
 
+//Returns a new triple (x, y, z) with xy=z
 func getTriple() []finite.Number {
 	result := []finite.Number{x[tripleCounter], y[tripleCounter], z[tripleCounter]}
 	tripleCounter++
 	return result
 }
 
+//Sets all the triples created in Preperation
 func (s Shamir) SetTriple(xMap, yMap, zMap map[int]finite.Number) {
 	x = xMap
 	y = yMap
 	z = zMap
 }
 
+//Register a receiver
 func (s Shamir) RegisterReceiver() {
 	receiver := Receiver{}
-
 	network.RegisterReceiver(receiver)
 }
 
@@ -212,14 +199,9 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 			}
 	}
 
-
-
 	outputGates := outputSize(circuit)
-	fmt.Println("Im party ", network.GetPartyNumber())
-
 	for {
 		wiresMutex.Lock()
-		//fmt.Println("Wires", wires)
 		wiresMutex.Unlock()
 		for i, gate := range circuit.Gates {
 			wiresMutex.Lock()
@@ -227,8 +209,6 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 			input2, found2 := wires[gate.Input_two]
 			wiresMutex.Unlock()
 			if found1 && found2 || found1 && gate.Input_two == 0 {
-				//fmt.Println("Gate ready")
-				//fmt.Println(gate)
 				var output finite.Number
 				switch gate.Operation {
 				case "Addition":
@@ -239,7 +219,6 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 				case "Multiplication":
 					if preprocessed  {
 						if true {
-							//fmt.Println(wires)
 							output = processedMultReturn(input1, input2, gate, partySize)
 							wiresMutex.Lock()
 							wires[gate.GateNumber] = output
@@ -266,8 +245,8 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 					wiresMutex.Unlock()
 				}
 
-				//Remove gate from circuits.gates
-				circuit.Gates = removeGate(circuit, gate, i)
+				//Remove gate from circuits.gates, so we do not iterate the same gate again
+				circuit.Gates = removeGate(circuit, i)
 				//Restart for-loop
 				break
 			}
@@ -288,7 +267,6 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 					if outputGates == 0 {
 						//No outputs for this party - return 0
 						result.Prime = big.NewInt(0)
-						//fmt.Println("I reconstructed ED", EDReconstructionCounter, "times")
 						return result
 					}
 				}
@@ -296,7 +274,6 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 				keys := reflect.ValueOf(resultGate).MapKeys()
 				key := keys[0]
 				if len(resultGate[(key.Interface()).(int)]) >= corrupts + 1 {
-					fmt.Println("Im reconstruction result with ", len(resultGate[(key.Interface()).(int)]))
 					result = Reconstruct(resultGate[(key.Interface()).(int)])
 					done = true
 				}
@@ -337,8 +314,6 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 			break
 		}
 	}
-
-	//fmt.Println("I reconstructed ED", EDReconstructionCounter, "times")
 	return result
 }
 
@@ -363,33 +338,26 @@ func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize
 }
 func processedMultReturn(input1, input2 finite.Number, gate Circuit.Gate, partySize int) finite.Number{
 	triple := getTriple()
-	//fmt.Println("Triple", triple)
-	//fmt.Println("prime", field.GetSize().Prime)
 	xt := field.Mul(triple[0], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-x
 	yt := field.Mul(triple[1], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-y
-	e := field.Add(input1, xt)//input1 - triple[0]
-	d := field.Add(input2, yt)//input2 - triple[1]
+	e := field.Add(input1, xt) //input1 - x
+	d := field.Add(input2, yt) //input2 - y
 	reconstructED(e, d, partySize, gate)
 	var eOpen, dOpen finite.Number
-	//fmt.Println("Waiting for eOpen and dOpen on gate", gate.GateNumber)
+	//Wait for the open values of e and d to be present in the map
 	for {
-		//fmt.Println("Locking eOpen")
 		eOpenMutex.Lock()
 		eOpenValue, foundE := eOpenMap[gate.GateNumber]
 		eOpenMutex.Unlock()
-		//fmt.Println("Unlocking eOpen")
-		//fmt.Println("Locking dOpen")
 		dOpenMutex.Lock()
 		dOpenValue, foundD := dOpenMap[gate.GateNumber]
 		dOpenMutex.Unlock()
-		//fmt.Println("Unlocking dOpen")
 		if foundE && foundD {
 			eOpen = eOpenValue
 			dOpen = dOpenValue
 			break
 		}
 	}
-	//fmt.Println("Done Waiting for eOpen and dOpen")
 	//Calculate ab
 	eb := field.Mul(eOpen, input2)
 	da := field.Mul(dOpen, input1)
@@ -402,33 +370,25 @@ func processedMultReturn(input1, input2 finite.Number, gate Circuit.Gate, partyS
 
 func processedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize int) {
 	triple := getTriple()
-	//fmt.Println("Triple", triple)
-	//fmt.Println("prime", field.GetSize().Prime)
 	xt := field.Mul(triple[0], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-x
 	yt := field.Mul(triple[1], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-y
 	e := field.Add(input1, xt)//input1 - triple[0]
 	d := field.Add(input2, yt)//input2 - triple[1]
 	reconstructED(e, d, partySize, gate)
 	var eOpen, dOpen finite.Number
-	//fmt.Println("Waiting for eOpen and dOpen on gate", gate.GateNumber)
 	for {
-		//fmt.Println("Locking eOpen")
 		eOpenMutex.Lock()
 		eOpenValue, foundE := eOpenMap[gate.GateNumber]
 		eOpenMutex.Unlock()
-		//fmt.Println("Unlocking eOpen")
-		//fmt.Println("Locking dOpen")
 		dOpenMutex.Lock()
 		dOpenValue, foundD := dOpenMap[gate.GateNumber]
 		dOpenMutex.Unlock()
-		//fmt.Println("Unlocking dOpen")
 		if foundE && foundD {
 			eOpen = eOpenValue
 			dOpen = dOpenValue
 			break
 		}
 	}
-	//fmt.Println("Done Waiting for eOpen and dOpen")
 	//Calculate ab
 	eb := field.Mul(eOpen, input2)
 	da := field.Mul(dOpen, input1)
@@ -441,62 +401,47 @@ func processedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize in
 	wiresMutex.Unlock()
 }
 
-
+//Distributes the shares e and d. If its the parties turn to reconstruct
+//the party will also wait for enough shares to reconstruct and distribute
+//the open value of e and d
 func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
+	//Distribute the e and d share for reconstruction
 	distributeED([]finite.Number{e, d}, partySize, gate.GateNumber, false)
-	//fmt.Println("Who is going to ",bundleCounter)
-	//fmt.Println("Im party", network.GetPartyNumber())
+	//Should I reconstruct e and d
 	if (gate.GateNumber % partySize) + 1 == network.GetPartyNumber()  {
 		EDReconstructionCounter++
 		//Reconstruct e
-		//fmt.Println("Waiting for e on gate", gate.GateNumber)
 		for {
-			//fmt.Println("Locking eMult")
 			eMultMutex.Lock()
 			eMultLength :=  len(eMult[gate.GateNumber])
 			eMultMutex.Unlock()
-			//fmt.Println("Unlocking eMult")
 			if eMultLength >= corrupts + 1 {
 				break
 			}
 		}
-		//fmt.Println("Done Waiting for e")
-		//fmt.Println("Locking eMult")
 		eMultMutex.Lock()
 		eMultGate := eMult[gate.GateNumber]
 		eOpen := Reconstruct(eMultGate)
 		eMultMutex.Unlock()
-		//fmt.Println("Unlocking eMult")
 
 		//Reconstruct d
-		//fmt.Println("Waiting for d on gate", gate.GateNumber)
-		//fmt.Println("Locking dMult")
 		dMultMutex.Lock()
 		dMultLength :=  len(dMult[gate.GateNumber])
 		dMultMutex.Unlock()
-		//fmt.Println("Unlocking dMult")
 		for {
 			if dMultLength >= corrupts + 1 {
 				break
 			}
 		}
-		//fmt.Println("Done Waiting for d")
-		//fmt.Println("Locking dMult")
 		dMultMutex.Lock()
 		dMultGate := dMult[gate.GateNumber]
 		dOpen := Reconstruct(dMultGate)
 		dMultMutex.Unlock()
-		//fmt.Println("Unlocking dMult")
-
 		distributeED([]finite.Number{eOpen, dOpen}, partySize, gate.GateNumber, true)
 	}
-/*	bundleCounter++
-	if bundleCounter > partySize {
-		bundleCounter = 1
-	}*/
 }
 
-
+//Returns the number of output gates for the party
 func outputSize(circuit Circuit.Circuit) int {
 	result := 0
 	for _, gate := range circuit.Gates {
@@ -507,6 +452,9 @@ func outputSize(circuit Circuit.Circuit) int {
 	return result
 }
 
+//Distributes shares e and d. E needs to be places on the first index (0) and d on second index (1)
+//If forAll is true distribute the open value of e and d
+//If forAll is false distribute e and d shares to be open to the correct party to reconstruct
 func distributeED(shares []finite.Number, partySize int, gate int, forAll bool) {
 	if forAll {
 		for party := 1; party <= partySize; party++ {
@@ -519,21 +467,15 @@ func distributeED(shares []finite.Number, partySize int, gate int, forAll bool) 
 			}
 			if party == network.GetPartyNumber() {
 				eOpenMutex.Lock()
-				//fmt.Println("Locking eOpen in dist")
 				eOpenMap[gate] = shares[0]
-				//fmt.Println("Unlocking eOpen in dist")
 				eOpenMutex.Unlock()
-
 				dOpenMutex.Lock()
-				//fmt.Println("Locking dOpen in dist")
 				dOpenMap[gate] = shares[1]
-				//fmt.Println("Unlocking dOpen in dist")
 				dOpenMutex.Unlock()
 			} else {
 				network.Send(shareBundle, party)
 			}
 		}
-
 	}else {
 		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
@@ -544,7 +486,6 @@ func distributeED(shares []finite.Number, partySize int, gate int, forAll bool) 
 		}
 
 		if network.GetPartyNumber() == (gate % partySize) + 1 {
-			//fmt.Println("Locking eMult in dist")
 			eMultMutex.Lock()
 			eMultMap := eMult[gate]
 			if eMultMap == nil {
@@ -553,8 +494,6 @@ func distributeED(shares []finite.Number, partySize int, gate int, forAll bool) 
 			eMultMap[(gate % partySize) + 1 ] = shares[0]
 			eMult[gate] = eMultMap
 			eMultMutex.Unlock()
-			//fmt.Println("Unlocked eMult in dist")
-			//fmt.Println("Locking dMult in dist")
 			dMultMutex.Lock()
 			dMultMap := dMult[gate]
 			if dMultMap == nil {
@@ -563,14 +502,13 @@ func distributeED(shares []finite.Number, partySize int, gate int, forAll bool) 
 			dMultMap[(gate % partySize) + 1 ] = shares[1]
 			dMult[gate] = dMultMap
 			dMultMutex.Unlock()
-			//fmt.Println("Unlocked dMult in dist")
-			//receivedShares = append(receivedShares, shareSlice...)
 		} else {
 			network.Send(shareBundle, (gate % partySize) + 1 )
 		}
 	}
 }
 
+//Distributes multiplication shares for the non processed protocol
 func distributeMultShares(shares []finite.Number, partySize int, gate int) {
 	for party := 1; party <= partySize; party++ {
 		shareBundle := numberbundle.NumberBundle{
@@ -590,19 +528,15 @@ func distributeMultShares(shares []finite.Number, partySize int, gate int) {
 			multMap[party] = shares[party - 1]
 			gateMult[gate] = multMap
 			gateMutex.Unlock()
-			//receivedShares = append(receivedShares, shareSlice...)
 		}else {
-			//fmt.Println("Im sending ", shareBundle, "to", party)
 			network.Send(shareBundle, party)
 		}
-
 	}
 }
 
+//Distributes the shares for the protocol
 func distributeShares(shares []finite.Number, partySize int, gate int) {
-
 	for party := 1; party <= partySize; party++ {
-		//fmt.Println("Im sending shares! Im party", network.GetPartyNumber())
 		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
 			Type:   "Share",
@@ -610,7 +544,6 @@ func distributeShares(shares []finite.Number, partySize int, gate int) {
 			From:   network.GetPartyNumber(),
 			Gate: 	gate,
 		}
-
 		if network.GetPartyNumber() == party {
 			wiresMutex.Lock()
 			wires[gate] = shares[party - 1]
@@ -618,10 +551,10 @@ func distributeShares(shares []finite.Number, partySize int, gate int) {
 		}else {
 			network.Send(shareBundle, party)
 		}
-
 	}
 }
 
+//Distributes the result share for reconstruction
 func distributeResult(result []finite.Number, party int, gate int) {
 	if network.GetPartyNumber() != party {
 		shareBundle := numberbundle.NumberBundle{
@@ -644,7 +577,8 @@ func distributeResult(result []finite.Number, party int, gate int) {
 	}
 }
 
-func removeGate(circuit Circuit.Circuit, gate Circuit.Gate, i int) []Circuit.Gate {
+//Removes a gate from the gates in the circuit
+func removeGate(circuit Circuit.Circuit, i int) []Circuit.Gate {
 	b := make([]Circuit.Gate, len(circuit.Gates))
 	copy(b, circuit.Gates)
 	// Remove the element at index i from a.
@@ -654,9 +588,5 @@ func removeGate(circuit Circuit.Circuit, gate Circuit.Gate, i int) []Circuit.Gat
 }
 
 func (s Shamir) ComputeFunction(shares map[int][]finite.Number, party int) []finite.Number {
-	//Reconstruct(shares)
-	if function == "add" {
-
-	}
-	return nil
+	panic("implement me")
 }
