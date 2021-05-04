@@ -2,8 +2,10 @@ package Prime
 
 import (
 	finite "MPC/Finite-fields"
+	"MPC/Secret-Sharing/Shamir"
 	crand "crypto/rand"
 	"math/big"
+	"reflect"
 )
 
 type Prime struct {
@@ -11,6 +13,34 @@ type Prime struct {
 }
 
 var primeNumber finite.Number
+
+func (p Prime) HaveEnoughForReconstruction(outputs, corrupts int, resultGate map[int]map[int]finite.Number) bool {
+	if outputs > 0 {
+		keys := reflect.ValueOf(resultGate).MapKeys()
+		key := keys[0]
+		if len(resultGate[(key.Interface()).(int)]) >= corrupts + 1 {
+			return true
+		}
+		return false
+	}
+	return true
+}
+
+func (p Prime) ComputeFieldResult(outputSize int, resultGate map[int]map[int]finite.Number) finite.Number {
+	var result finite.Number
+	if outputSize == 0 {
+		//No outputs for this party - return 0
+		result.Prime = big.NewInt(0)
+		return result
+	}else {
+		keys := reflect.ValueOf(resultGate).MapKeys()
+		key := keys[0]
+		//if len(resultGate[(key.Interface()).(int)]) >= corrupts + 1 {
+			result = Shamir.Reconstruct(resultGate[(key.Interface()).(int)])
+			return result
+		//}
+	}
+}
 
 //Checks if a list is filled up with correct values
 func (p Prime) FilledUp(numbers []finite.Number) bool {

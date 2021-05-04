@@ -11,8 +11,6 @@ import (
 	_ "crypto/rand"
 	"fmt"
 	"math/big"
-	"reflect"
-	"sort"
 	"sync"
 
 	"github.com/google/uuid"
@@ -252,11 +250,12 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 				break
 			}
 		}
-		var done = false
+		//var done = false
 		if len(circuit.Gates) != 0 {
 			continue
 		}
-		switch field.(type) {
+
+/*		switch field.(type) {
 			case Prime.Prime:
 				for {
 					resultMutex.Lock()
@@ -310,10 +309,29 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 					result = finite.Number{Binary: []int{0}}
 					done = true
 				}
+		}*/
+		for {
+			resultMutex.Lock()
+			resultLen := len(resultGate)
+			resultMutex.Unlock()
+			//Is all the gates filled with some value
+			if resultLen == outputGates {
+				for {
+					//Does all the gates have enough values to reconstruct
+					resultMutex.Lock()
+					isReady := field.HaveEnoughForReconstruction(outputGates, corrupts, resultGate)
+					resultMutex.Unlock()
+					if isReady {
+						break
+					}
+				}
+				resultMutex.Lock()
+				result = field.ComputeFieldResult(outputGates, resultGate)
+				resultMutex.Unlock()
+				break
+			}
 		}
-		if done {
-			break
-		}
+		break
 	}
 	return result
 }

@@ -2,7 +2,10 @@ package Binary
 
 import (
 	finite "MPC/Finite-fields"
+	"MPC/Secret-Sharing/Shamir"
 	"math/rand"
+	"reflect"
+	"sort"
 	"time"
 )
 
@@ -10,6 +13,44 @@ type Binary struct {
 }
 
 var field finite.Number
+
+
+func (b Binary) HaveEnoughForReconstruction(outputs, corrupts int, resultGate map[int]map[int]finite.Number) bool {
+	if outputs > 0 {
+		keys := reflect.ValueOf(resultGate).MapKeys()
+		var keysArray []int
+		for _, k := range keys {
+			keysArray = append(keysArray, (k.Interface()).(int))
+		}
+		sort.Ints(keysArray)
+		for _, k := range keysArray {
+			if len(resultGate[k]) < corrupts + 1  {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (b Binary) ComputeFieldResult(outputs int, resultGate map[int]map[int]finite.Number) finite.Number {
+	trueResult := make([]int, outputs)
+	if outputs > 0 {
+		keys := reflect.ValueOf(resultGate).MapKeys()
+		var keysArray []int
+		for _, k := range keys {
+			keysArray = append(keysArray, (k.Interface()).(int))
+		}
+		sort.Ints(keysArray)
+		for i, k := range keysArray {
+			resultBit := Shamir.Reconstruct(resultGate[k]).Binary[7]
+			trueResult[i] = resultBit
+		}
+		return finite.Number{Binary: trueResult}
+	} else {
+		return finite.Number{Binary: []int{0}}
+
+	}
+}
 
 //Checks if a list is filled up with correct values
 func (b Binary) FilledUp(numbers []finite.Number) bool {
