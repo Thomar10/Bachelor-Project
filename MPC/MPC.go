@@ -210,7 +210,9 @@ func main() {
 				case _ = <- resChan:
 					break L
 				case <- time.After(60 * time.Second):
+					fmt.Println("*********** TIMEOUT AFTER 60 SECONDS ***********")
 					resetTheWholeShit(testCircuit)
+					time.Sleep(5 * time.Second)
 				}
 			}
 
