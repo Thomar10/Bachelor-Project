@@ -13,6 +13,12 @@ type Prime struct {
 
 var primeNumber finite.Number
 
+func (p Prime) ConstructFieldSecret(secret finite.Number, doesIHaveAnInput bool, partySize, corrupts, partyNumber int) ([][]finite.Number, []int) {
+	if doesIHaveAnInput {
+		return [][]finite.Number{p.ComputeShares(partySize, secret, corrupts)}, []int{partyNumber}
+	}
+	return [][]finite.Number{}, []int{partyNumber}
+}
 
 func (p Prime) CheckPolynomialIsConsistent(resultGate map[int]map[int]finite.Number, corrupts int, reconstructFunction func(map[int]finite.Number, int) []finite.Number) (bool, [][]finite.Number) {
 	keys := reflect.ValueOf(resultGate).MapKeys()

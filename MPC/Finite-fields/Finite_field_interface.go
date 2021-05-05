@@ -20,6 +20,7 @@ type Finite interface {
 	HaveEnoughForReconstruction(outputs, corrupt int, resultGate map[int]map[int] Number) bool
 	ComputeFieldResult(outputSize int, polynomials [][]Number) Number
 	CheckPolynomialIsConsistent(resultGate map[int]map[int]Number, corrupts int, reconstructFunction func(map[int]Number, int) []Number) (bool, [][]Number)
+	ConstructFieldSecret(secret Number,doesIHaveAnInput bool, partySize int, corrupts int, partyNumber int) ([][]Number, []int)
 }
 type Number struct {
 	Prime *big.Int

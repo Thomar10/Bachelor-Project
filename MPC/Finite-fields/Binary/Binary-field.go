@@ -13,6 +13,18 @@ type Binary struct {
 
 var field finite.Number
 
+func (b Binary) ConstructFieldSecret(secret finite.Number, doesIHaveAnInput bool, partySize, corrupts, partyNumber int) ([][]finite.Number, []int) {
+	resultSecrets := make([][]finite.Number, len(secret.Binary))
+	inputGates := make([]int, len(secret.Binary))
+	for i, sec := range secret.Binary {
+		binarySec := make([]int, 8)
+		binarySec[7] = sec
+		resultSecrets[i] = b.ComputeShares(partySize, finite.Number{Binary: binarySec}, corrupts)
+		inputGates[i] = partyNumber * len(secret.Binary) + i - len(secret.Binary) + 1
+	}
+	return resultSecrets, inputGates
+}
+
 func (b Binary) CheckPolynomialIsConsistent(resultGate map[int]map[int]finite.Number, corrupts int, reconstructFunction func(map[int]finite.Number, int) []finite.Number) (bool, [][]finite.Number) {
 	keys := reflect.ValueOf(resultGate).MapKeys()
 	if len(keys) <= 0 {
