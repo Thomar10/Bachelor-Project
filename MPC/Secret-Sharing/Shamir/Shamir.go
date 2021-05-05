@@ -101,7 +101,7 @@ var x = make(map[int]finite.Number)
 var y = make(map[int]finite.Number)
 var z = make(map[int]finite.Number)
 var EDReconstructionCounter = 0
-
+var field finite.Finite
 
 
 func (s Shamir) ResetSecretSharing() {
@@ -138,7 +138,6 @@ func (s Shamir) ComputeResult(results []finite.Number) finite.Number {
 	//return Reconstruct(shares)
 }
 
-var field finite.Finite
 
 func (s Shamir) SetField(f finite.Finite) {
 	field = f
@@ -183,7 +182,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 		distributeShares(se, partySize, inputGates[i])
 	}
 
-	outputGates := outputSize(circuit)
+	outputGates, multGates := outputSizeAndMultGates(circuit)
 	for {
 		for i, gate := range circuit.Gates {
 			wiresMutex.Lock()
@@ -201,6 +200,9 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 					wires[gate.GateNumber] = output
 					wiresMutex.Unlock()
 				case "Multiplication":
+					if multGates[0] != gate.GateNumber {
+						continue
+					}
 					if preprocessed  {
 						//Turn false for concurrent multiplication
 						if true {
@@ -418,15 +420,19 @@ func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
 	}
 }
 
-//Returns the number of output gates for the party
-func outputSize(circuit Circuit.Circuit) int {
+//Returns the number of output gates for the party, and a list of multiplication gates
+func outputSizeAndMultGates(circuit Circuit.Circuit) (int, []int) {
 	result := 0
+	var multGates []int
 	for _, gate := range circuit.Gates {
 		if gate.Operation == "Output" && gate.Output == network.GetPartyNumber() {
 			result++
 		}
+		if gate.Operation == "Multiplication" {
+			multGates = append(multGates, gate.GateNumber)
+		}
 	}
-	return result
+	return result, multGates
 }
 
 //Distributes shares e and d. E needs to be places on the first index (0) and d on second index (1)
