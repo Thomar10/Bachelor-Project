@@ -1,5 +1,5 @@
 {
- "PartySize": 3,
+ "PartySize": 6,
  "Field": "Binary",
  "SecretSharing": "Shamir",
  "Preprocessing": false,
