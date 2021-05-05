@@ -209,8 +209,8 @@ func main() {
 				select {
 				case _ = <- resChan:
 					break L
-				case <- time.After(60 * time.Second):
-					fmt.Println("*********** TIMEOUT AFTER 60 SECONDS ***********")
+				case <- time.After(3 * time.Minute):
+					fmt.Println("*********** TIMEOUT AFTER 3 MINUTES ***********")
 					resetTheWholeShit(testCircuit)
 					time.Sleep(5 * time.Second)
 				}
