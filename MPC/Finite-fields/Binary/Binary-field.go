@@ -3,6 +3,8 @@ package Binary
 import (
 	finite "MPC/Finite-fields"
 	"math/rand"
+	"reflect"
+	"sort"
 	"time"
 )
 
@@ -11,8 +13,31 @@ type Binary struct {
 
 var field finite.Number
 
+func (b Binary) CheckPolynomialIsConsistent(resultGate map[int]map[int]finite.Number, corrupts int, reconstructFunction func(map[int]finite.Number, int) []finite.Number) (bool, [][]finite.Number) {
+	keys := reflect.ValueOf(resultGate).MapKeys()
+	if len(keys) <= 0 {
+		return true, [][]finite.Number{}
+	}
+	var keysArray []int
+	for _, k := range keys {
+		keysArray = append(keysArray, (k.Interface()).(int))
+	}
+	sort.Ints(keysArray)
+	resultPolynomials := make([][]finite.Number, len(keysArray))
+	for j, k := range keysArray {
+		resultPolynomial := reconstructFunction(resultGate[k], corrupts)
+		resultPolynomials[j] = resultPolynomial
+		for i, v := range resultGate[k] {
+			polyShare := b.CalcPoly(resultPolynomial, i)
+			if !b.CompareEqNumbers(v, polyShare) {
+				return false, resultPolynomials
+			}
+		}
+	}
+	return true, resultPolynomials
+}
 
-/*func (b Binary) HaveEnoughForReconstruction(outputs, corrupts int, resultGate map[int]map[int]finite.Number) bool {
+func (b Binary) HaveEnoughForReconstruction(outputs, parties int, resultGate map[int]map[int]finite.Number) bool {
 	if outputs > 0 {
 		keys := reflect.ValueOf(resultGate).MapKeys()
 		var keysArray []int
@@ -21,25 +46,19 @@ var field finite.Number
 		}
 		sort.Ints(keysArray)
 		for _, k := range keysArray {
-			if len(resultGate[k]) < corrupts + 1  {
+			if len(resultGate[k]) < parties  {
 				return false
 			}
 		}
 	}
 	return true
-}*/
+}
 
-/*func (b Binary) ComputeFieldResult(outputs int, resultGate map[int]map[int]finite.Number) finite.Number {
-	trueResult := make([]int, outputs)
-	if outputs > 0 {
-		keys := reflect.ValueOf(resultGate).MapKeys()
-		var keysArray []int
-		for _, k := range keys {
-			keysArray = append(keysArray, (k.Interface()).(int))
-		}
-		sort.Ints(keysArray)
-		for i, k := range keysArray {
-			resultBit := Shamir.Reconstruct(resultGate[k]).Binary[7]
+func (b Binary) ComputeFieldResult(outputSize int, polynomials [][]finite.Number) finite.Number {
+	trueResult := make([]int, outputSize)
+	if outputSize > 0 {
+		for i, poly := range polynomials {
+			resultBit := b.CalcPoly(poly, 0).Binary[7]
 			trueResult[i] = resultBit
 		}
 		return finite.Number{Binary: trueResult}
@@ -47,7 +66,7 @@ var field finite.Number
 		return finite.Number{Binary: []int{0}}
 
 	}
-}*/
+}
 
 //Checks if a list is filled up with correct values
 func (b Binary) FilledUp(numbers []finite.Number) bool {
@@ -97,9 +116,7 @@ func (b Binary) SetSize(f finite.Number) {
 }
 
 //Computes Shamir Secret Shares
-func (b Binary) ComputeShares(parties int, secret finite.Number) []finite.Number {
-	// t should be less than half of connected parties t < 1/2 n
-	var t = (parties - 1) / 2 //Integer division rounds down automatically
+func (b Binary) ComputeShares(parties int, secret finite.Number, t int) []finite.Number {
 	//[0,0,..,1, 0] + [0,0,..,1, 0]x + [0,0,..,1, 0]x^2 (x -> [0,0,..,1, 0])
 	//[[0,0,..,1, 0], [0,0,..,1, 0], [0,0,..,1, 0]] -> shares er i binary
 	var polynomial = make([][]int, t + 1)

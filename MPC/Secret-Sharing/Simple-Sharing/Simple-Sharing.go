@@ -113,7 +113,7 @@ func (s Simple_Sharing) SetTriple(xMap, yMap, zMap map[int]finite.Number) {
 	panic("Omegalul")
 }
 
-func (s Simple_Sharing) TheOneRing(circuit Circuit.Circuit, secret finite.Number, preprocessed bool) finite.Number {
+func (s Simple_Sharing) TheOneRing(circuit Circuit.Circuit, secret finite.Number, preprocessed bool, corrupts int) finite.Number {
 	var result = finite.Number{Prime: big.NewInt(0)}
 
 	partyNumber := network.GetPartyNumber()

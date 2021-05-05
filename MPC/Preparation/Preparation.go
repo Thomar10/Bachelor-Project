@@ -201,7 +201,6 @@ func triplesActive(multiGates int, partySize int, corrupts int, field finite.Fin
 			checkConsistency(corrupts, gate, xList,  "x", j, field)
 			checkConsistency(corrupts, gate, rList,  "r", j, field)
 			checkConsistency(corrupts, gate, r2tList, "r2t", j, field)
-			fmt.Println("Done checking consistency for ", j)
 			//alle er konsistente
 			for k, _ := range yList[2*corrupts:] {
 				inputPlace := k + (partySize-corrupts-1)*(j-1) + (i - 1) + 1
@@ -410,7 +409,7 @@ func listUnFilled(size int) []finite.Number {
 }
 
 func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, number finite.Number, randomType string, active bool) []finite.Number {
-	randomShares := field.ComputeShares(partySize, number)
+	randomShares := field.ComputeShares(partySize, number, corrupts)
 	//randomShares[len(randomShares) - 1] = finite.Number{Prime: big.NewInt(10)}
 	distributeShares(randomShares, network.GetParties(), i, randomType)
 	for {

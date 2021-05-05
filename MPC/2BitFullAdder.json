@@ -1,7 +1,9 @@
 {
-  "PartySize": 3,
+  "PartySize": 4,
   "Field": "Binary",
   "SecretSharing": "Shamir",
+  "Preprocessing": true,
+  "Active": true,
   "Gate": [
     {
       "GateNumber": 7,

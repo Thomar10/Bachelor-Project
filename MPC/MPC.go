@@ -34,7 +34,6 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 		if match.Type == "Prime" {
 			myPartyNumber = network.GetPartyNumber()
 			createField(finite.Number{Prime: match.Prime.Prime})
-			//Placer bare mutex for at -race ikke skriger om det
 			sizeSetMutex.Lock()
 			sizeSet = true
 			sizeSetMutex.Unlock()
@@ -59,8 +58,8 @@ var circuit Circuit.Circuit
 var preprocessing = false
 var doneMutex = &sync.Mutex{}
 var sizeSetMutex = &sync.Mutex{}
-
-
+var activeCorrupts bool
+var corrupts int
 
 func resetTheWholeShit(circuitToLoad string) {
 	//sizeSetMutex.Lock()
@@ -199,12 +198,16 @@ func main() {
 
 			secret = finite.Number{Binary: secByte}
 		}
-
+		activeCorrupts = circuit.Active
 		partySize = circuit.PartySize
 		preprocessing = circuit.Preprocessing
 		finiteField.InitSeed()
 		bundleType = numberbundle.NumberBundle{}
-
+		if activeCorrupts {
+			corrupts = (partySize - 1) / 3
+		}else {
+			corrupts = (partySize - 1) / 2
+		}
 
 		receiver := Receiver{}
 		network.RegisterReceiver(receiver)
@@ -248,9 +251,9 @@ func main() {
 			}
 		}
 
+
 		if preprocessing {
 			fmt.Println("Preprocessing!")
-			corrupts := (partySize - 1) / 3
 			Preparation.Prepare(circuit, finiteField, corrupts, secretSharing, true)
 			fmt.Println("Done preprocessing")
 		}
@@ -259,7 +262,7 @@ func main() {
 		fmt.Println("I am party", network.GetPartyNumber())
 
 		startTime := time.Now()
-		result := secretSharing.TheOneRing(circuit, secret, preprocessing)
+		result := secretSharing.TheOneRing(circuit, secret, preprocessing, corrupts)
 		endTime := time.Since(startTime)
 
 		distributeDone()
@@ -289,7 +292,6 @@ func MPCTest(secret finite.Number) (finite.Number, time.Duration) {
 	prepTime := time.Now()
 	if preprocessing {
 		fmt.Println("Preprocessing!")
-		corrupts := (partySize - 1) / 2
 		Preparation.Prepare(circuit, finiteField, corrupts, secretSharing, true)
 		fmt.Println("Done preprocessing")
 	}
@@ -311,7 +313,7 @@ func MPCTest(secret finite.Number) (finite.Number, time.Duration) {
 
 	fmt.Println("Im calling the one ring with secret", secret)
 	startTime := time.Now()
-	result := secretSharing.TheOneRing(circuit, secret, preprocessing)
+	result := secretSharing.TheOneRing(circuit, secret, preprocessing, corrupts)
 	endTime := time.Since(startTime)
 	fmt.Println("got a result")
 	distributeDone()

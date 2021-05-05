@@ -11,8 +11,6 @@ import (
 	_ "crypto/rand"
 	"fmt"
 	"math/big"
-	"reflect"
-	"sort"
 	"sync"
 
 	"github.com/google/uuid"
@@ -112,7 +110,7 @@ var gateMutex = &sync.Mutex{}
 var resultMutex = &sync.Mutex{}
 var resultGate = make(map[int]map[int]finite.Number)
 var receivedResults = make(map[int]finite.Number)
-var corrupts = 0
+var corrupts int
 var tripleCounter = 1
 var x = make(map[int]finite.Number)
 var y = make(map[int]finite.Number)
@@ -147,7 +145,7 @@ func (s Shamir) SetFunction(f string) {
 }
 
 func (s Shamir) ComputeShares(parties int, secret finite.Number) []finite.Number {
-	return field.ComputeShares(parties, secret)
+	return field.ComputeShares(parties, secret, corrupts)
 }
 
 
@@ -181,10 +179,9 @@ func (s Shamir) RegisterReceiver() {
 }
 
 
-func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, preprocessed bool) finite.Number {
-	corrupts = (network.GetParties() - 1) / 2
+func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, preprocessed bool, c int) finite.Number {
 	partySize := network.GetParties()
-
+	corrupts = c
 	doesIHaveAnInput := false
 	iAm := network.GetPartyNumber()
 	for _, gate := range circuit.Gates {
@@ -272,87 +269,60 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 				break
 			}
 		}
-		var done = false
+
 		if len(circuit.Gates) != 0 {
 			continue
 		}
-		switch field.(type) {
-		case Prime.Prime:
-			for {
-				resultMutex.Lock()
-				resultLen := len(resultGate)
-				resultMutex.Unlock()
-				if resultLen > 0 {
-					break
-				}
-				if outputGates == 0 {
-					//No outputs for this party - return 0
-					result.Prime = big.NewInt(0)
-					//fmt.Println("I reconstructed ED", EDReconstructionCounter, "times")
-					return result
-				}
-			}
+		fmt.Println("Going into result stage")
+		for {
 			resultMutex.Lock()
-			keys := reflect.ValueOf(resultGate).MapKeys()
-			key := keys[0]
-			if len(resultGate[(key.Interface()).(int)]) >= corrupts + 1 {
-				fmt.Println("Im reconstruction result with ", len(resultGate[(key.Interface()).(int)]))
-				result = Reconstruct(resultGate[(key.Interface()).(int)])
-				done = true
-			}
+			resultLen := len(resultGate)
 			resultMutex.Unlock()
-		case Binary.Binary:
-			if outputGates > 0 {
-				trueResult := make([]int, outputGates)
-				if len(resultGate) == outputGates {
-					keys := reflect.ValueOf(resultGate).MapKeys()
-					var keysArray []int
-					for _, k := range keys {
-						keysArray = append(keysArray, (k.Interface()).(int))
+			//Is all the gates filled with some value
+			if resultLen == outputGates {
+				for {
+					//Does all the gates have enough values to reconstruct
+					resultMutex.Lock()
+					isReady := field.HaveEnoughForReconstruction(outputGates, partySize, resultGate)
+					resultMutex.Unlock()
+					if isReady {
+						break
 					}
-					sort.Ints(keysArray)
-					for i, k := range keysArray {
-						for {
-							resultMutex.Lock()
-							resultMapLen := len(resultGate[k])
-							resultMutex.Unlock()
-							if resultMapLen >= corrupts + 1  {
-								resultMutex.Lock()
-								resultBit := Reconstruct(resultGate[k]).Binary[7]
-								trueResult[i] = resultBit
-								resultMutex.Unlock()
-								break
-							}
-						}
-					}
-					result = finite.Number{Binary: trueResult}
-					done = true
 				}
-			} else {
-				result = finite.Number{Binary: []int{0}}
-				done = true
+				resultMutex.Lock()
+				isConsistent, polynomials := field.CheckPolynomialIsConsistent(resultGate, corrupts, ReconstructPolynomial)
+				resultMutex.Unlock()
+				if isConsistent {
+					result = field.ComputeFieldResult(outputGates, polynomials)
+				}else {
+					fmt.Println("REEEEEEEEEE MOAR!")
+				}
+				break
 			}
 		}
-		if done {
-			break
-		}
-	}
+		break
 
-	//fmt.Println("I reconstructed ED", EDReconstructionCounter, "times")
+	}
 	return result
 }
 
 
 func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize int) finite.Number {
 	interMult := field.Mul(input1, input2)
-	multShares := field.ComputeShares(partySize, interMult)
+	multShares := field.ComputeShares(partySize, interMult, corrupts)
 	distributeMultShares(multShares, partySize, gate.GateNumber)
 	for {
 		gateMutex.Lock()
 		multMaap := gateMult[gate.GateNumber]
 		multMapLen := len(multMaap)
 		if multMapLen >= network.GetParties() {//2 * corrupts + 1  {
-			result := Reconstruct(multMaap)
+			resultPolynomial := ReconstructPolynomial(multMaap, 2 * corrupts)
+			for i, v := range multMaap {
+				if !ShareIsOnPolynomial(v, resultPolynomial, i) {
+					fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+				}
+			}
+			result := field.CalcPoly(resultPolynomial, 0)
 			gateMutex.Unlock()
 			return result
 		}
@@ -361,6 +331,7 @@ func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize
 
 
 }
+
 func processedMultReturn(input1, input2 finite.Number, gate Circuit.Gate, partySize int) finite.Number{
 	triple := getTriple()
 	//fmt.Println("Triple", triple)
@@ -456,7 +427,7 @@ func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
 			eMultLength :=  len(eMult[gate.GateNumber])
 			eMultMutex.Unlock()
 			//fmt.Println("Unlocking eMult")
-			if eMultLength >= corrupts + 1 {
+			if eMultLength >= network.GetParties() {
 				break
 			}
 		}
@@ -464,7 +435,16 @@ func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
 		//fmt.Println("Locking eMult")
 		eMultMutex.Lock()
 		eMultGate := eMult[gate.GateNumber]
-		eOpen := Reconstruct(eMultGate)
+
+		eOpenPolynomial := ReconstructPolynomial(eMultGate, corrupts)
+		for i, v := range eMultGate {
+			if !ShareIsOnPolynomial(v, eOpenPolynomial, i) {
+				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+			}
+		}
+		eOpen := field.CalcPoly(eOpenPolynomial, 0)
 		eMultMutex.Unlock()
 		//fmt.Println("Unlocking eMult")
 
@@ -476,7 +456,7 @@ func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
 		dMultMutex.Unlock()
 		//fmt.Println("Unlocking dMult")
 		for {
-			if dMultLength >= corrupts + 1 {
+			if dMultLength >= network.GetParties() {
 				break
 			}
 		}
@@ -484,7 +464,15 @@ func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
 		//fmt.Println("Locking dMult")
 		dMultMutex.Lock()
 		dMultGate := dMult[gate.GateNumber]
-		dOpen := Reconstruct(dMultGate)
+		dOpenPolynomial := ReconstructPolynomial(dMultGate, corrupts)
+		for i, v := range dMultGate {
+			if !ShareIsOnPolynomial(v, dOpenPolynomial, i) {
+				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+			}
+		}
+		dOpen := field.CalcPoly(dOpenPolynomial, 0)
 		dMultMutex.Unlock()
 		//fmt.Println("Unlocking dMult")
 

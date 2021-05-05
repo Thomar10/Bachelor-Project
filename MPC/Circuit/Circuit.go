@@ -5,6 +5,7 @@ type Circuit struct {
 	Field string `json:"Field"`
 	SecretSharing string `json:"SecretSharing"`
 	Preprocessing bool `json:"Preprocessing"`
+	Active bool `json:"Active"`
 	Gates []Gate `json:"Gate"`
 }
 

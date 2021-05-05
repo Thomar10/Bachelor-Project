@@ -3,6 +3,7 @@
   "Field": "Prime",
   "SecretSharing": "Shamir",
   "Preprocessing": true,
+  "Active": true,
   "Gate": [
     {
       "GateNumber": 4,

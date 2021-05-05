@@ -4,6 +4,7 @@ import (
 	finite "MPC/Finite-fields"
 	crand "crypto/rand"
 	"math/big"
+	"reflect"
 )
 
 type Prime struct {
@@ -11,12 +12,29 @@ type Prime struct {
 }
 
 var primeNumber finite.Number
-/*
-func (p Prime) HaveEnoughForReconstruction(outputs, corrupts int, resultGate map[int]map[int]finite.Number) bool {
+
+
+func (p Prime) CheckPolynomialIsConsistent(resultGate map[int]map[int]finite.Number, corrupts int, reconstructFunction func(map[int]finite.Number, int) []finite.Number) (bool, [][]finite.Number) {
+	keys := reflect.ValueOf(resultGate).MapKeys()
+	if len(keys) <= 0 {
+		return true, [][]finite.Number{}
+	}
+	key := keys[0].Interface().(int)
+	resultPolynomial := reconstructFunction(resultGate[key], corrupts)
+	for i, v := range resultGate[key] {
+		polyShare := p.CalcPoly(resultPolynomial, i)
+		if !p.CompareEqNumbers(v, polyShare) {
+			return false, [][]finite.Number{resultPolynomial}
+		}
+	}
+	return true, [][]finite.Number{resultPolynomial}
+}
+
+func (p Prime) HaveEnoughForReconstruction(outputs, parties int, resultGate map[int]map[int]finite.Number) bool {
 	if outputs > 0 {
 		keys := reflect.ValueOf(resultGate).MapKeys()
 		key := keys[0]
-		if len(resultGate[(key.Interface()).(int)]) >= corrupts + 1 {
+		if len(resultGate[(key.Interface()).(int)]) >= parties {
 			return true
 		}
 		return false
@@ -24,21 +42,17 @@ func (p Prime) HaveEnoughForReconstruction(outputs, corrupts int, resultGate map
 	return true
 }
 
-func (p Prime) ComputeFieldResult(outputSize int, resultGate map[int]map[int]finite.Number) finite.Number {
+func (p Prime) ComputeFieldResult(outputSize int, polynomial [][]finite.Number) finite.Number {
 	var result finite.Number
 	if outputSize == 0 {
 		//No outputs for this party - return 0
 		result.Prime = big.NewInt(0)
 		return result
 	}else {
-		keys := reflect.ValueOf(resultGate).MapKeys()
-		key := keys[0]
-		//if len(resultGate[(key.Interface()).(int)]) >= corrupts + 1 {
-			result = Shamir.Reconstruct(resultGate[(key.Interface()).(int)])
-			return result
-		//}
+		//There is only one polynomial for primes (as there is only one output gate per party
+		return p.CalcPoly(polynomial[0], 0)
 	}
-}*/
+}
 
 //Checks if a list is filled up with correct values
 func (p Prime) FilledUp(numbers []finite.Number) bool {
@@ -58,9 +72,7 @@ func (p Prime) GetConstant(constant int) finite.Number {
 }
 
 //Computes Shamir secret shares
-func (p Prime) ComputeShares(parties int, secret finite.Number) []finite.Number {
-	// t should be less than half of connected parties t < 1/2 n
-	var t = (parties - 1) / 3 //Integer division rounds down automatically
+func (p Prime) ComputeShares(parties int, secret finite.Number, t int) []finite.Number {
 	//Polynomial: 3 + 4x + 2x^2
 	//Representation of that poly: [3, 4, 2]
 	var polynomial = make([]*big.Int, t + 1)
