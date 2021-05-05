@@ -17,8 +17,8 @@ type Finite interface {
 	FilledUp([]Number) bool
 	CalcPoly(poly []Number, x int) Number
 	CompareEqNumbers(share, polyShare Number) bool
-	HaveEnoughForReconstruction(outputs, corrupt int, resultGate map[int]map[int] Number) bool
-	ComputeFieldResult(int, map[int]map[int]Number) Number
+/*	HaveEnoughForReconstruction(outputs, corrupt int, resultGate map[int]map[int] Number) bool
+	ComputeFieldResult(int, map[int]map[int]Number) Number*/
 }
 type Number struct {
 	Prime *big.Int

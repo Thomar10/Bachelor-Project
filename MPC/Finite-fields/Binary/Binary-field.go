@@ -2,10 +2,7 @@ package Binary
 
 import (
 	finite "MPC/Finite-fields"
-	"MPC/Secret-Sharing/Shamir"
 	"math/rand"
-	"reflect"
-	"sort"
 	"time"
 )
 
@@ -15,7 +12,7 @@ type Binary struct {
 var field finite.Number
 
 
-func (b Binary) HaveEnoughForReconstruction(outputs, corrupts int, resultGate map[int]map[int]finite.Number) bool {
+/*func (b Binary) HaveEnoughForReconstruction(outputs, corrupts int, resultGate map[int]map[int]finite.Number) bool {
 	if outputs > 0 {
 		keys := reflect.ValueOf(resultGate).MapKeys()
 		var keysArray []int
@@ -30,9 +27,9 @@ func (b Binary) HaveEnoughForReconstruction(outputs, corrupts int, resultGate ma
 		}
 	}
 	return true
-}
+}*/
 
-func (b Binary) ComputeFieldResult(outputs int, resultGate map[int]map[int]finite.Number) finite.Number {
+/*func (b Binary) ComputeFieldResult(outputs int, resultGate map[int]map[int]finite.Number) finite.Number {
 	trueResult := make([]int, outputs)
 	if outputs > 0 {
 		keys := reflect.ValueOf(resultGate).MapKeys()
@@ -50,7 +47,7 @@ func (b Binary) ComputeFieldResult(outputs int, resultGate map[int]map[int]finit
 		return finite.Number{Binary: []int{0}}
 
 	}
-}
+}*/
 
 //Checks if a list is filled up with correct values
 func (b Binary) FilledUp(numbers []finite.Number) bool {

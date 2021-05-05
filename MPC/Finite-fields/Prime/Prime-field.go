@@ -2,10 +2,8 @@ package Prime
 
 import (
 	finite "MPC/Finite-fields"
-	"MPC/Secret-Sharing/Shamir"
 	crand "crypto/rand"
 	"math/big"
-	"reflect"
 )
 
 type Prime struct {
@@ -13,7 +11,7 @@ type Prime struct {
 }
 
 var primeNumber finite.Number
-
+/*
 func (p Prime) HaveEnoughForReconstruction(outputs, corrupts int, resultGate map[int]map[int]finite.Number) bool {
 	if outputs > 0 {
 		keys := reflect.ValueOf(resultGate).MapKeys()
@@ -40,7 +38,7 @@ func (p Prime) ComputeFieldResult(outputSize int, resultGate map[int]map[int]fin
 			return result
 		//}
 	}
-}
+}*/
 
 //Checks if a list is filled up with correct values
 func (p Prime) FilledUp(numbers []finite.Number) bool {
@@ -62,7 +60,7 @@ func (p Prime) GetConstant(constant int) finite.Number {
 //Computes Shamir secret shares
 func (p Prime) ComputeShares(parties int, secret finite.Number) []finite.Number {
 	// t should be less than half of connected parties t < 1/2 n
-	var t = (parties - 1) / 2 //Integer division rounds down automatically
+	var t = (parties - 1) / 3 //Integer division rounds down automatically
 	//Polynomial: 3 + 4x + 2x^2
 	//Representation of that poly: [3, 4, 2]
 	var polynomial = make([]*big.Int, t + 1)
