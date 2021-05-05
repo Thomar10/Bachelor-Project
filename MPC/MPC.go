@@ -167,34 +167,54 @@ func main() {
 		}
 
 		for i:= 0; i < 50; i++ {
-			fmt.Println("Im on iteration", i + 1)
-			primeNumber := int64(5)
-			if randomize {
-				primeNumber = int64(rand.Intn(10000))
-			}
+			result := finite.Number{}
+			timee := time.Duration(0)
 
-			randBinary := make([]int, 20)
+			L:
+			for {
+				resChan := make(chan finite.Number, 1)
 
-			for i := 0; i < len(randBinary); i++ {
-				randBinary[i] = rand.Intn(2)
-			}
+				go func(){
+					fmt.Println("Im on iteration", i + 1)
+					primeNumber := int64(5)
+					if randomize {
+						primeNumber = int64(rand.Intn(10000))
+					}
 
-			secretToTest := finite.Number{Prime: big.NewInt(primeNumber), Binary: []int{}}
-			if network.GetPartyNumber() == 1 {
-				if randomize {
-					secretToTest = finite.Number{Prime: big.NewInt(primeNumber), Binary: randBinary}
-				} else {
-					secretToTest = finite.Number{Prime: big.NewInt(primeNumber), Binary: []int{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+					randBinary := make([]int, 20)
+
+					for i := 0; i < len(randBinary); i++ {
+						randBinary[i] = rand.Intn(2)
+					}
+
+					secretToTest := finite.Number{Prime: big.NewInt(primeNumber), Binary: []int{}}
+					if network.GetPartyNumber() == 1 {
+						if randomize {
+							secretToTest = finite.Number{Prime: big.NewInt(primeNumber), Binary: randBinary}
+						} else {
+							secretToTest = finite.Number{Prime: big.NewInt(primeNumber), Binary: []int{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+						}
+					} else if network.GetPartyNumber() == 2 {
+						if randomize {
+							secretToTest = finite.Number{Prime: big.NewInt(primeNumber), Binary: randBinary}
+						} else {
+							secretToTest = finite.Number{Prime: big.NewInt(primeNumber), Binary: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+						}
+					}
+
+					result, timee = MPCTest(secretToTest)
+					resChan <- result
+				}()
+
+				select {
+				case _ = <- resChan:
+					break L
+				case <- time.After(60 * time.Second):
+					resetTheWholeShit(testCircuit)
 				}
-			} else if network.GetPartyNumber() == 2 {
-				if randomize {
-					secretToTest = finite.Number{Prime: big.NewInt(primeNumber), Binary: randBinary}
-				} else {
-					secretToTest = finite.Number{Prime: big.NewInt(primeNumber), Binary: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
-				}
 			}
 
-			result, timee := MPCTest(secretToTest)
+			//result, timee := MPCTest(secretToTest)
 			fmt.Println("Result", result)
 			fmt.Println("Took", timee)
 			avgTime += timee
