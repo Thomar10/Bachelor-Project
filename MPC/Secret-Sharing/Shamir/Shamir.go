@@ -207,6 +207,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 						//Turn false for concurrent multiplication
 						if true {
 							output = processedMultReturn(input1, input2, gate, partySize)
+							multGates = deleteFirstIndex(multGates)
 							wiresMutex.Lock()
 							wires[gate.GateNumber] = output
 							wiresMutex.Unlock()
@@ -284,11 +285,6 @@ func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize
 		multMapLen := len(multMaap)
 		if multMapLen >= network.GetParties() {//2 * corrupts + 1  {
 			resultPolynomial := ReconstructPolynomial(multMaap, 2 * corrupts)
-			for i, v := range multMaap {
-				if !ShareIsOnPolynomial(v, resultPolynomial, i) {
-					fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-				}
-			}
 			result := field.CalcPoly(resultPolynomial, 0)
 			gateMutex.Unlock()
 			return result
@@ -418,6 +414,11 @@ func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
 		dMultMutex.Unlock()
 		distributeED([]finite.Number{eOpen, dOpen}, partySize, gate.GateNumber, true)
 	}
+}
+
+
+func deleteFirstIndex(mulGates[]int) []int {
+	return mulGates[1:]
 }
 
 //Returns the number of output gates for the party, and a list of multiplication gates

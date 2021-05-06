@@ -215,8 +215,6 @@ func triplesActive(multiGates int, partySize int, corrupts int, field finite.Fin
 			}
 		}
 	}
-	fmt.Println("All lists were consistent")
-
 	//Calculate z in the triple
 	k := len(y)
 	for i := 1; i <= k; i++ {

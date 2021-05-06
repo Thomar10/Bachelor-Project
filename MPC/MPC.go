@@ -254,7 +254,7 @@ func main() {
 
 		if preprocessing {
 			fmt.Println("Preprocessing!")
-			Preparation.Prepare(circuit, finiteField, corrupts, secretSharing, true)
+			Preparation.Prepare(circuit, finiteField, corrupts, secretSharing, activeCorrupts)
 			fmt.Println("Done preprocessing")
 		}
 
