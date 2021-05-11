@@ -20,6 +20,7 @@ var field finite.Finite
 var receivedShares =  make(map[int][]finite.Number)
 var receivedMultShares =  make(map[int][]finite.Number)
 var partySize int
+var myPartyNumber int
 var receivedResults []finite.Number
 var rSharesMutex = &sync.Mutex{}
 var rMultSharesMutex = &sync.Mutex{}
@@ -100,7 +101,7 @@ func computeAdd(secret finite.Number, s secretsharing.Secret_Sharing) finite.Num
 
 func (s Simple_Sharing) TheOneRing(circuit Circuit.Circuit, secret finite.Number, preprocessed bool, corrupts int) finite.Number {
 	var result = finite.Number{Prime: big.NewInt(0), Binary: Binary.ConvertXToByte(0)}
-	partyNumber := network.GetPartyNumber()
+	myPartyNumber = network.GetPartyNumber()
 	partySize = network.GetParties()
 	gate := circuit.Gates[0]
 
@@ -109,7 +110,7 @@ func (s Simple_Sharing) TheOneRing(circuit Circuit.Circuit, secret finite.Number
 		result = computeAdd(secret, s)
 	case "Multiplication":
 		shouldGiveInput := true
-		if partyNumber != gate.Input_one && partyNumber != gate.Input_two {
+		if myPartyNumber != gate.Input_one && myPartyNumber != gate.Input_two {
 			//This party should not participate
 			shouldGiveInput = false
 		}
@@ -143,7 +144,7 @@ func computeMul() finite.Number {
 	//Everyone needs to have same party order
 	party1 := keysArray[0]
 	party2 := keysArray[1]
-	i := network.GetPartyNumber() - 1
+	i := myPartyNumber - 1
 	for j := 0; j < len(receivedMultShares[size]); j++ {
 		//Last party
 		if i == len(receivedMultShares[size]) {
@@ -194,15 +195,15 @@ func distributeShares(shares []finite.Number, shareType string) {
 			ID:     uuid.Must(uuid.NewRandom()).String(),
 			Type:   shareType,
 			Shares: shareSlice,
-			From:   network.GetPartyNumber(),
+			From:   myPartyNumber,
 		}
-		if network.GetPartyNumber() == party && shareType == "Share" {
+		if myPartyNumber == party && shareType == "Share" {
 			rSharesMutex.Lock()
-			receivedShares[network.GetPartyNumber()] = shareSlice
+			receivedShares[myPartyNumber] = shareSlice
 			rSharesMutex.Unlock()
-		} else if network.GetPartyNumber() == party && shareType == "MultShare" {
+		} else if myPartyNumber == party && shareType == "MultShare" {
 			rMultSharesMutex.Lock()
-			receivedMultShares[network.GetPartyNumber()] = shareSlice
+			receivedMultShares[myPartyNumber] = shareSlice
 			rMultSharesMutex.Unlock()
 		}else {
 			network.Send(shareBundle, party)
@@ -214,12 +215,12 @@ func distributeShares(shares []finite.Number, shareType string) {
 func distributeResult(result []finite.Number) {
 	counter := 0
 	for party := 1; party <= partySize; party++ {
-		if network.GetPartyNumber() != party {
+		if myPartyNumber != party {
 			shareBundle := numberbundle.NumberBundle{
 				ID: uuid.Must(uuid.NewRandom()).String(),
 				Type: "Result",
 				Result:  result[counter],
-				From: network.GetPartyNumber(),
+				From: myPartyNumber,
 			}
 			counter++
 			network.Send(shareBundle, party)
