@@ -183,7 +183,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 
 	secrets, inputGates := field.ConstructFieldSecret(secret, doesIHaveAnInput, partySize, corrupts, myPartyNumber)
 	for i, se := range secrets {
-		distributeShares(se, partySize, inputGates[i])
+		distributeShares(se, inputGates[i])
 	}
 
 	outputGates, multGates := outputSizeAndMultGates(circuit)
@@ -210,16 +210,16 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 					if preprocessed  {
 						//Turn false for concurrent multiplication
 						if true {
-							output = processedMultReturn(input1, input2, gate, partySize)
+							output = processedMultReturn(input1, input2, gate)
 							multGates = deleteFirstIndex(multGates)
 							wiresMutex.Lock()
 							wires[gate.GateNumber] = output
 							wiresMutex.Unlock()
 						}else {
-							go processedMult(input1, input2, gate, partySize)
+							go processedMult(input1, input2, gate)
 						}
 					}else {
-						output = nonProcessedMult(input1, input2, gate, partySize, s)
+						output = nonProcessedMult(input1, input2, gate, s)
 						wiresMutex.Lock()
 						wires[gate.GateNumber] = output
 						wiresMutex.Unlock()
@@ -279,10 +279,10 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 }
 
 
-func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize int, s secretsharing.Secret_Sharing) finite.Number {
+func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, s secretsharing.Secret_Sharing) finite.Number {
 	interMult := field.Mul(input1, input2)
 	multShares := s.ComputeShares(partySize, interMult)
-	distributeMultShares(multShares, partySize, gate.GateNumber)
+	distributeMultShares(multShares, gate.GateNumber)
 	for {
 		gateMutex.Lock()
 		multMaap := gateMult[gate.GateNumber]
@@ -299,13 +299,13 @@ func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize
 
 }
 
-func processedMultReturn(input1, input2 finite.Number, gate Circuit.Gate, partySize int) finite.Number{
+func processedMultReturn(input1, input2 finite.Number, gate Circuit.Gate) finite.Number{
 	triple := getTriple()
 	xt := field.Mul(triple[0], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-x
 	yt := field.Mul(triple[1], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-y
 	e := field.Add(input1, xt) //input1 - x
 	d := field.Add(input2, yt) //input2 - y
-	reconstructED(e, d, partySize, gate)
+	reconstructED(e, d, gate)
 	var eOpen, dOpen finite.Number
 	//Wait for the open values of e and d to be present in the map
 	for {
@@ -331,13 +331,13 @@ func processedMultReturn(input1, input2 finite.Number, gate Circuit.Gate, partyS
 	return ab
 }
 
-func processedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize int) {
+func processedMult(input1, input2 finite.Number, gate Circuit.Gate) {
 	triple := getTriple()
 	xt := field.Mul(triple[0], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-x
 	yt := field.Mul(triple[1], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-y
 	e := field.Add(input1, xt)//input1 - triple[0]
 	d := field.Add(input2, yt)//input2 - triple[1]
-	reconstructED(e, d, partySize, gate)
+	reconstructED(e, d, gate)
 	var eOpen, dOpen finite.Number
 	for {
 		eOpenMutex.Lock()
@@ -368,8 +368,8 @@ func processedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize in
 //the party will also wait for enough shares to reconstruct the polynomial
 //and check if the shares is consistent. If consistent it will distribute
 //the open value of e and d, else distribute a panic
-func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
-	distributeED([]finite.Number{e, d}, partySize, gate.GateNumber, false)
+func reconstructED(e, d finite.Number, gate Circuit.Gate) {
+	distributeED([]finite.Number{e, d}, gate.GateNumber, false)
 	//Distribute the e and d share for reconstruction
 	if (gate.GateNumber % partySize) + 1 == myPartyNumber  {
 		EDReconstructionCounter++
@@ -416,7 +416,7 @@ func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
 		}
 		dOpen := field.CalcPoly(dOpenPolynomial, 0)
 		dMultMutex.Unlock()
-		distributeED([]finite.Number{eOpen, dOpen}, partySize, gate.GateNumber, true)
+		distributeED([]finite.Number{eOpen, dOpen}, gate.GateNumber, true)
 	}
 }
 
@@ -443,7 +443,7 @@ func outputSizeAndMultGates(circuit Circuit.Circuit) (int, []int) {
 //Distributes shares e and d. E needs to be places on the first index (0) and d on second index (1)
 //If forAll is true distribute the open value of e and d
 //If forAll is false distribute e and d shares to be open to the correct party to reconstruct
-func distributeED(shares []finite.Number, partySize int, gate int, forAll bool) {
+func distributeED(shares []finite.Number, gate int, forAll bool) {
 	if forAll {
 		for party := 1; party <= partySize; party++ {
 			shareBundle := numberbundle.NumberBundle{
@@ -497,7 +497,7 @@ func distributeED(shares []finite.Number, partySize int, gate int, forAll bool) 
 }
 
 //Distributes multiplication shares for the non processed protocol
-func distributeMultShares(shares []finite.Number, partySize int, gate int) {
+func distributeMultShares(shares []finite.Number, gate int) {
 	for party := 1; party <= partySize; party++ {
 		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
@@ -524,7 +524,7 @@ func distributeMultShares(shares []finite.Number, partySize int, gate int) {
 
 
 //Distributes the shares for the protocol
-func distributeShares(shares []finite.Number, partySize int, gate int) {
+func distributeShares(shares []finite.Number, gate int) {
 	for party := 1; party <= partySize; party++ {
 		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),

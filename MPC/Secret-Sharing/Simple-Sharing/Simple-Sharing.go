@@ -8,7 +8,6 @@ import (
 	"MPC/Finite-fields/Binary"
 	network "MPC/Network"
 	secretsharing "MPC/Secret-Sharing"
-	"fmt"
 	"github.com/google/uuid"
 	"math/big"
 	"reflect"
@@ -119,7 +118,6 @@ func (s Simple_Sharing) TheOneRing(circuit Circuit.Circuit, secret finite.Number
 			distributeShares(shares, "MultShare")
 		}
 		multResult := computeMul()
-		fmt.Println("the multRes", multResult)
 		//Add the u's together
 		result = computeAdd(multResult, s)
 	}
