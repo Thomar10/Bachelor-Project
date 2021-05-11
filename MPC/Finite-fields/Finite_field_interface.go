@@ -12,6 +12,7 @@ type Finite interface {
 	Add(n1, n2 Number) Number
 	Mul(n1, n2 Number) Number
 	ComputeShares(parties int, secret Number, corrupts int) []Number
+	CreateRandomNumber() Number
 	FindInverse(a, prime Number) Number
 	GetConstant(constantString int) Number
 	FilledUp([]Number) bool

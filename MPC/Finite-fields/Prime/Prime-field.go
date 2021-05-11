@@ -138,6 +138,17 @@ func (p Prime) Mul(n1, n2 finite.Number) finite.Number {
 	return finite.Number{Prime: x}
 }
 
+func (p Prime) CreateRandomNumber() finite.Number {
+	randomNumber := finite.Number{}
+	randomPrime, err := crand.Prime(crand.Reader, 32)
+	if err != nil {
+		panic("Unable to compute random number")
+	}
+	randomNumber.Prime = randomPrime
+	randomNumber = p.Add(randomNumber, finite.Number{Prime: big.NewInt(0)})
+	return randomNumber
+}
+
 //Compare if two numbers are equal
 func (p Prime) CompareEqNumbers(share, polyShare finite.Number) bool {
 	r := share.Prime.Cmp(polyShare.Prime)

@@ -124,18 +124,8 @@ func (s Shamir) ResetSecretSharing() {
 
 
 
-func (s Shamir) SetFunction(f string) {
-	function = f
-}
-
 func (s Shamir) ComputeShares(parties int, secret finite.Number) []finite.Number {
 	return field.ComputeShares(parties, secret, corrupts)
-}
-
-
-func (s Shamir) ComputeResult(results []finite.Number) finite.Number {
-	panic("implement meeeeeeeeeeeeeeeeeeeeee!")
-	//return Reconstruct(shares)
 }
 
 
@@ -572,12 +562,4 @@ func removeGate(circuit Circuit.Circuit, i int) []Circuit.Gate {
 	b[i] = b[len(b)-1] // Copy last element to index i.
 	b = b[:len(b)-1]   // Truncate slice.
 	return b
-}
-
-func (s Shamir) ComputeFunction(shares map[int][]finite.Number, party int) []finite.Number {
-	//Reconstruct(shares)
-	if function == "add" {
-
-	}
-	return nil
 }

@@ -9,7 +9,6 @@ import (
 	network "MPC/Network"
 	secretsharing "MPC/Secret-Sharing"
 	"MPC/Secret-Sharing/Shamir"
-	crand "crypto/rand"
 	"fmt"
 	"math/big"
 	"sync"
@@ -414,16 +413,7 @@ func listFilledUp(list []finite.Number, field finite.Finite) bool {
 
 //Creates a random number
 func createRandomNumber(field finite.Finite) finite.Number {
-	randomNumber := finite.Number{}
-	randomPrime, err := crand.Prime(crand.Reader, 32)
-	if err != nil {
-		panic("Unable to compute random number")
-	}
-	randomNumber.Prime = randomPrime
-	randomNumber.Binary = Binary.CreateRandomByte()
-	//Make sure random number is in the field
-	randomNumber = field.Add(randomNumber, finite.Number{Prime: big.NewInt(0), Binary: Binary.ConvertXToByte(0)})
-	return randomNumber
+	return field.CreateRandomNumber()
 }
 
 //Create the Hyper invertible matrix as described in the report
