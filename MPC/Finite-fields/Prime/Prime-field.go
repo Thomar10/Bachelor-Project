@@ -145,6 +145,7 @@ func (p Prime) CreateRandomNumber() finite.Number {
 		panic("Unable to compute random number")
 	}
 	randomNumber.Prime = randomPrime
+	//Make sure that the random number is inside the finite field
 	randomNumber = p.Add(randomNumber, finite.Number{Prime: big.NewInt(0)})
 	return randomNumber
 }

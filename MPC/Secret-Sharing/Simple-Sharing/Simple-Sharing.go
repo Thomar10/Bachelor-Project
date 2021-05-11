@@ -113,7 +113,6 @@ func (s Simple_Sharing) TheOneRing(circuit Circuit.Circuit, secret finite.Number
 			shouldGiveInput = false
 		}
 		if shouldGiveInput {
-			fmt.Println("I should share secret")
 			shares := s.ComputeShares(partySize, secret)
 			distributeShares(shares, "MultShare")
 		}

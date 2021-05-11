@@ -7,6 +7,7 @@ import (
 	finite "MPC/Finite-fields"
 	"MPC/Finite-fields/Binary"
 	network "MPC/Network"
+	secretsharing "MPC/Secret-Sharing"
 	_ "crypto/rand"
 	"fmt"
 	"math/big"
@@ -42,7 +43,6 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			gateMutex.Unlock()
 
 		} else if match.Type == "Result" {
-			fmt.Println("Got a result", match)
 			resultMutex.Lock()
 			receivedResults = resultGate[match.Gate]
 			if receivedResults == nil {
@@ -125,7 +125,20 @@ func (s Shamir) ResetSecretSharing() {
 
 
 func (s Shamir) ComputeShares(parties int, secret finite.Number) []finite.Number {
-	return field.ComputeShares(parties, secret, corrupts)
+	//Polynomial: 3 + 4x + 2x^2 or [0,0,..,1, 0] + [0,0,..,1, 0]x + [0,0,..,1, 0]x^2 (x -> [0,0,..,1, 0])
+	//Representation of that poly: [3, 4, 2] or [[0,0,..,1, 0], [0,0,..,1, 0], [0,0,..,1, 0]]
+	var polynomial = make([]finite.Number, corrupts + 1)
+	polynomial[0] = secret
+	for i := 1; i < corrupts + 1; i++ {
+		polynomial[i] = field.CreateRandomNumber()
+	}
+
+	var shares = make([]finite.Number, parties)
+
+	for i := 1; i <= parties; i++ {
+		shares[i - 1] = field.CalcPoly(polynomial, i)
+	}
+	return shares
 }
 
 
@@ -205,7 +218,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 							go processedMult(input1, input2, gate, partySize)
 						}
 					}else {
-						output = nonProcessedMult(input1, input2, gate, partySize)
+						output = nonProcessedMult(input1, input2, gate, partySize, s)
 						wiresMutex.Lock()
 						wires[gate.GateNumber] = output
 						wiresMutex.Unlock()
@@ -265,9 +278,9 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 }
 
 
-func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize int) finite.Number {
+func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize int, s secretsharing.Secret_Sharing) finite.Number {
 	interMult := field.Mul(input1, input2)
-	multShares := field.ComputeShares(partySize, interMult, corrupts)
+	multShares := s.ComputeShares(partySize, interMult)
 	distributeMultShares(multShares, partySize, gate.GateNumber)
 	for {
 		gateMutex.Lock()
