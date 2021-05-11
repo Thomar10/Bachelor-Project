@@ -149,6 +149,10 @@ func (p Prime) CreateRandomNumber() finite.Number {
 	return randomNumber
 }
 
+func (p Prime) ConvertLastShare(secret finite.Number) finite.Number {
+	return finite.Number{Prime: secret.Prime}
+}
+
 //Compare if two numbers are equal
 func (p Prime) CompareEqNumbers(share, polyShare finite.Number) bool {
 	r := share.Prime.Cmp(polyShare.Prime)

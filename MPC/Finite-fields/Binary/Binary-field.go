@@ -29,6 +29,14 @@ func (b Binary) CreateRandomNumber() finite.Number {
 	return finite.Number{Binary: CreateRandomByte()}
 }
 
+
+func (b Binary) ConvertLastShare(secret finite.Number) finite.Number {
+	if len(secret.Binary) > 1 {
+		return secret
+	}
+	return finite.Number{Binary: []int{0, 0, 0, 0, 0, 0, 0, secret.Binary[0]}}
+}
+
 func (b Binary) CheckPolynomialIsConsistent(resultGate map[int]map[int]finite.Number, corrupts int, reconstructFunction func(map[int]finite.Number, int) []finite.Number) (bool, [][]finite.Number) {
 	keys := reflect.ValueOf(resultGate).MapKeys()
 	if len(keys) <= 0 {

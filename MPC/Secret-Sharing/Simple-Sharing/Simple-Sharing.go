@@ -8,6 +8,7 @@ import (
 	"MPC/Finite-fields/Binary"
 	network "MPC/Network"
 	secretsharing "MPC/Secret-Sharing"
+	"fmt"
 	"github.com/google/uuid"
 	"math/big"
 	"reflect"
@@ -98,7 +99,6 @@ func computeAdd(secret finite.Number, s secretsharing.Secret_Sharing) finite.Num
 
 func (s Simple_Sharing) TheOneRing(circuit Circuit.Circuit, secret finite.Number, preprocessed bool, corrupts int) finite.Number {
 	var result = finite.Number{Prime: big.NewInt(0), Binary: Binary.ConvertXToByte(0)}
-
 	partyNumber := network.GetPartyNumber()
 	partySize := network.GetParties()
 	gate := circuit.Gates[0]
@@ -113,10 +113,12 @@ func (s Simple_Sharing) TheOneRing(circuit Circuit.Circuit, secret finite.Number
 			shouldGiveInput = false
 		}
 		if shouldGiveInput {
+			fmt.Println("I should share secret")
 			shares := s.ComputeShares(partySize, secret)
 			distributeShares(shares, "MultShare")
 		}
 		multResult := computeMul()
+		fmt.Println("the multRes", multResult)
 		//Add the u's together
 		result = computeAdd(multResult, s)
 	}
@@ -143,7 +145,7 @@ func computeMul() finite.Number {
 	party2 := keysArray[1]
 	i := network.GetPartyNumber() - 1
 	for j := 0; j < len(receivedMultShares[size]); j++ {
-		//Sidste party
+		//Last party
 		if i == len(receivedMultShares[size]) {
 			interMult := field.Mul(receivedMultShares[party1][0],  receivedMultShares[party2][j])
 			result = field.Add(result, interMult)
@@ -151,7 +153,6 @@ func computeMul() finite.Number {
 			interMul := field.Mul(receivedMultShares[party1][i], receivedMultShares[party2][j])
 			result = field.Add(result, interMul)
 		}
-
 	}
 	if i-1 < 0 {
 		interMul := field.Mul(receivedMultShares[party1][len(receivedMultShares[size])+(i-1)], receivedMultShares[party2][len(receivedMultShares[size])+(i-2)])
@@ -168,24 +169,19 @@ func computeMul() finite.Number {
 
 func (s Simple_Sharing) ComputeShares(parties int, secret finite.Number) []finite.Number {
 	var shares []finite.Number
-	lastShare := secret
+	lastShare := field.ConvertLastShare(secret)
 	//Create the n - 1 random shares
 	for sh := 1; sh < parties; sh++ {
 		shares = append(shares, field.CreateRandomNumber())
 	}
 	//Create the nth share
 	for _, share := range shares {
-		inverseShare := field.Mul(finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(0)}, share)
+		inverseShare := field.Mul(finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}, share)
 		lastShare = field.Add(lastShare, inverseShare)
 	}
 	shares = append(shares, lastShare)
 	return shares
 }
-
-func (s Simple_Sharing) SetTriple(xMap, yMap, zMap map[int]finite.Number) {
-	//Will only be run by Shamir
-}
-
 
 func distributeShares(shares []finite.Number, shareType string) {
 	for party := 1; party <= network.GetParties(); party++ {
@@ -237,4 +233,8 @@ func distributeResult(result []finite.Number) {
 			rResultMutex.Unlock()
 		}
 	}
+}
+
+func (s Simple_Sharing) SetTriple(xMap, yMap, zMap map[int]finite.Number) {
+	//Will only be run by Shamir
 }

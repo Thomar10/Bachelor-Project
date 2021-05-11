@@ -1,6 +1,6 @@
 {
   "PartySize": 3,
-  "Field": "Prime",
+  "Field": "Binary",
   "SecretSharing": "SimpleSharing",
   "Gate": [
     {

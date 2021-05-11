@@ -1,7 +1,9 @@
 {
   "PartySize": 3,
-  "Field": "Prime",
+  "Field": "Binary",
   "SecretSharing": "Shamir",
+  "Preprocessing": true,
+  "Active": false,
   "Gate": [
     {
       "GateNumber": 4,
@@ -10,26 +12,20 @@
       "Operation": "Multiplication"
     },
     {
-      "GateNumber": 5,
-      "Input_one": 4,
-      "Input_two": 3,
-      "Operation": "Multiplication"
-    },
-    {
       "GateNumber": 7,
-      "Input_one": 5,
+      "Input_one": 4,
       "Output": 1,
       "Operation": "Output"
     },
     {
       "GateNumber": 8,
-      "Input_one": 5,
+      "Input_one": 4,
       "Output": 2,
       "Operation": "Output"
     },
     {
       "GateNumber": 9,
-      "Input_one": 5,
+      "Input_one": 4,
       "Output": 3,
       "Operation": "Output"
     }

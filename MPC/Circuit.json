@@ -1,6 +1,6 @@
 {
   "PartySize": 4,
-  "Field": "Prime",
+  "Field": "Binary",
   "SecretSharing": "Shamir",
   "Preprocessing": true,
   "Active": true,
@@ -163,19 +163,19 @@
     },
     {
       "GateNumber": 99,
-      "Input_one": 5,
+      "Input_one": 4,
       "Output": 1,
       "Operation": "Output"
     },
     {
       "GateNumber": 100,
-      "Input_one": 5,
+      "Input_one": 4,
       "Output": 2,
       "Operation": "Output"
     },
     {
       "GateNumber": 101,
-      "Input_one": 5,
+      "Input_one": 4,
       "Output": 3,
       "Operation": "Output"
     }
