@@ -79,7 +79,7 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 	}
 }
 
-var function string
+
 var wires = make(map[int]finite.Number)
 var gateMult = make(map[int]map[int]finite.Number)
 var eMult = make(map[int]map[int]finite.Number)
@@ -96,6 +96,7 @@ var resultMutex = &sync.Mutex{}
 var resultGate = make(map[int]map[int]finite.Number)
 var receivedResults = make(map[int]finite.Number)
 var corrupts int
+var partySize int
 var tripleCounter = 1
 var x = make(map[int]finite.Number)
 var y = make(map[int]finite.Number)
@@ -105,7 +106,6 @@ var field finite.Finite
 
 
 func (s Shamir) ResetSecretSharing() {
-	function = ""
 	wires = make(map[int]finite.Number)
 	gateMult = make(map[int]map[int]finite.Number)
 	eMult = make(map[int]map[int]finite.Number)
@@ -165,7 +165,7 @@ func (s Shamir) RegisterReceiver() {
 
 
 func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, preprocessed bool, c int) finite.Number {
-	partySize := network.GetParties()
+	partySize = network.GetParties()
 	corrupts = c
 	doesIHaveAnInput := false
 	iAm := network.GetPartyNumber()
@@ -286,7 +286,7 @@ func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize
 		gateMutex.Lock()
 		multMaap := gateMult[gate.GateNumber]
 		multMapLen := len(multMaap)
-		if multMapLen >= network.GetParties() {//2 * corrupts + 1  {
+		if multMapLen >= partySize {
 			resultPolynomial := ReconstructPolynomial(multMaap, 2 * corrupts)
 			result := field.CalcPoly(resultPolynomial, 0)
 			gateMutex.Unlock()
@@ -377,7 +377,7 @@ func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
 			eMultMutex.Lock()
 			eMultLength :=  len(eMult[gate.GateNumber])
 			eMultMutex.Unlock()
-			if eMultLength >= network.GetParties() {
+			if eMultLength >= partySize {
 				break
 			}
 		}
@@ -399,7 +399,7 @@ func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
 		dMultLength :=  len(dMult[gate.GateNumber])
 		dMultMutex.Unlock()
 		for {
-			if dMultLength >= network.GetParties() {
+			if dMultLength >= partySize {
 				break
 			}
 		}

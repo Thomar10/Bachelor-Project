@@ -45,6 +45,7 @@ var r2tMap = make(map[int]map[int]finite.Number)
 var r2tOpenMutex = &sync.Mutex{}
 var r2tOpen = make(map[int]finite.Number)
 var bundleCounter = 1
+var partySize int
 
 func (r Receiver) Receive(bundle bundle.Bundle) {
 	switch match := bundle.(type) {
@@ -83,7 +84,7 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			checkXMap = checkShareMapX[match.Gate]
 
 			for i, v := range match.Shares {
-				if i == network.GetParties() {
+				if i == partySize {
 					break
 				}
 				checkStringMap := checkXMap[i + 1]
@@ -95,14 +96,14 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			checkShareMapX[match.Gate] = checkXMap
 
 			checkShareXMutex.Unlock()
-			if len(match.Shares) > network.GetParties() {
+			if len(match.Shares) > partySize {
 				checkShareYMutex.Lock()
 				checkYMap := checkShareMapY[match.Gate]
 				if checkYMap == nil {
 					initCheckShares(match.Gate, checkShareMapY)
 				}
 				checkYMap = checkShareMapY[match.Gate]
-				for i, v := range match.Shares[network.GetParties():] {
+				for i, v := range match.Shares[partySize:] {
 					checkStringMap := checkYMap[i + 1]
 					list := checkStringMap[match.Random]
 					list[match.From - 1] = v
@@ -137,7 +138,7 @@ func initCheckShares(gate int, mapToInit map[int]map[int]map[string][]finite.Num
 	if randomMap == nil {
 		randomMap = make(map[int]map[string][]finite.Number)
 	}
-	for i := 1; i <= network.GetParties(); i++ {
+	for i := 1; i <= partySize; i++ {
 		randomMap[i] = initCheckSharesString()
 	}
 	mapToInit[gate] = randomMap
@@ -147,10 +148,10 @@ func initCheckShares(gate int, mapToInit map[int]map[int]map[string][]finite.Num
 //on the map entries x, y, r, r2t
 func initCheckSharesString() map[string][]finite.Number {
 	checkShareStringMap := make(map[string][]finite.Number)
-	checkShareStringMap["x"] = listUnFilled(network.GetParties())
-	checkShareStringMap["y"] = listUnFilled(network.GetParties())
-	checkShareStringMap["r"] = listUnFilled(network.GetParties())
-	checkShareStringMap["r2t"] = listUnFilled(network.GetParties())
+	checkShareStringMap["x"] = listUnFilled(partySize)
+	checkShareStringMap["y"] = listUnFilled(partySize)
+	checkShareStringMap["r"] = listUnFilled(partySize)
+	checkShareStringMap["r2t"] = listUnFilled(partySize)
 	return checkShareStringMap
 }
 //Initialize the map for entry gate to have lists filled with 'garbage' values
@@ -160,10 +161,10 @@ func initPrepShares(gate int) {
 	if randomMap == nil {
 		randomMap = make(map[string][]finite.Number)
 	}
-	randomMap["x"] = listUnFilled(network.GetParties())
-	randomMap["y"] = listUnFilled(network.GetParties())
-	randomMap["r"] = listUnFilled(network.GetParties())
-	randomMap["r2t"] = listUnFilled(network.GetParties())
+	randomMap["x"] = listUnFilled(partySize)
+	randomMap["y"] = listUnFilled(partySize)
+	randomMap["r"] = listUnFilled(partySize)
+	randomMap["r2t"] = listUnFilled(partySize)
 	prepShares[gate] = randomMap
 }
 
@@ -176,7 +177,7 @@ func RegisterReceiver() {
 
 //Creates all the triples needed to run the MPC-protocol with active or passive corrupt parties
 func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir secretsharing.Secret_Sharing, active bool) {
-	partySize := circuit.PartySize
+	partySize = circuit.PartySize
 	createHyperMatrix(partySize, field)
 	multiGates := countMultiGates(circuit)
 
@@ -387,7 +388,7 @@ func listUnFilled(size int) []finite.Number {
 func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, number finite.Number, randomType string, active bool) []finite.Number {
 	randomShares := field.ComputeShares(partySize, number, corrupts)
 	//randomShares[len(randomShares) - 1] = finite.Number{Prime: big.NewInt(10)}
-	distributeShares(randomShares, network.GetParties(), i, randomType)
+	distributeShares(randomShares, partySize, i, randomType)
 	for {
 		isFilledUp := false
 		prepMutex.Lock()
@@ -506,7 +507,7 @@ func distributeCheckShares(shares []finite.Number, party int, gate int, randomTy
 		}
 		checkXMap = checkShareMapX[gate]
 		for i, v := range shares {
-			if i == network.GetParties() {
+			if i == partySize {
 				break
 			}
 			checkStringMap := checkXMap[i + 1]
@@ -519,14 +520,14 @@ func distributeCheckShares(shares []finite.Number, party int, gate int, randomTy
 
 		checkShareXMutex.Unlock()
 
-		if len(shares) > network.GetParties() {
+		if len(shares) > partySize {
 			checkShareYMutex.Lock()
 			checkYMap := checkShareMapY[gate]
 			if checkYMap == nil {
 				initCheckShares(gate, checkShareMapY)
 			}
 			checkYMap = checkShareMapY[gate]
-			for i, v := range shares[network.GetParties():] {
+			for i, v := range shares[partySize:] {
 				checkStringMap := checkYMap[i + 1]
 				list := checkStringMap[randomType]
 				list[network.GetPartyNumber() - 1] = v

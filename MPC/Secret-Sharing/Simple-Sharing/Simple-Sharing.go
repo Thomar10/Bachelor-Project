@@ -19,6 +19,7 @@ import (
 var field finite.Finite
 var receivedShares =  make(map[int][]finite.Number)
 var receivedMultShares =  make(map[int][]finite.Number)
+var partySize int
 var receivedResults []finite.Number
 var rSharesMutex = &sync.Mutex{}
 var rMultSharesMutex = &sync.Mutex{}
@@ -68,10 +69,10 @@ func (s Simple_Sharing) SetField(f finite.Finite) {
 }
 
 func computeAdd(secret finite.Number, s secretsharing.Secret_Sharing) finite.Number {
-	shares := s.ComputeShares(network.GetParties(), secret)
+	shares := s.ComputeShares(partySize, secret)
 	distributeShares(shares, "Share")
 	for{
-		if network.GetParties() == len(receivedShares) {
+		if partySize == len(receivedShares) {
 			result := make([]finite.Number, len(receivedShares[1]))
 			for i, _ := range result {
 				result[i] = finite.Number{Prime: big.NewInt(0), Binary: Binary.ConvertXToByte(0)}
@@ -87,7 +88,7 @@ func computeAdd(secret finite.Number, s secretsharing.Secret_Sharing) finite.Num
 	}
 
 	for {
-		if network.GetParties() == len(receivedResults) {
+		if partySize == len(receivedResults) {
 			finalResult := finite.Number{Prime: big.NewInt(0), Binary: Binary.ConvertXToByte(0)}
 			for _, r := range receivedResults {
 				finalResult = field.Add(finalResult, r)
@@ -100,7 +101,7 @@ func computeAdd(secret finite.Number, s secretsharing.Secret_Sharing) finite.Num
 func (s Simple_Sharing) TheOneRing(circuit Circuit.Circuit, secret finite.Number, preprocessed bool, corrupts int) finite.Number {
 	var result = finite.Number{Prime: big.NewInt(0), Binary: Binary.ConvertXToByte(0)}
 	partyNumber := network.GetPartyNumber()
-	partySize := network.GetParties()
+	partySize = network.GetParties()
 	gate := circuit.Gates[0]
 
 	switch gate.Operation {
@@ -183,7 +184,7 @@ func (s Simple_Sharing) ComputeShares(parties int, secret finite.Number) []finit
 }
 
 func distributeShares(shares []finite.Number, shareType string) {
-	for party := 1; party <= network.GetParties(); party++ {
+	for party := 1; party <= partySize; party++ {
 		shareCopy := make([]finite.Number, len(shares))
 		copy(shareCopy, shares)
 		shareSlice := shareCopy[:party - 1]
@@ -212,7 +213,7 @@ func distributeShares(shares []finite.Number, shareType string) {
 
 func distributeResult(result []finite.Number) {
 	counter := 0
-	for party := 1; party <= network.GetParties(); party++ {
+	for party := 1; party <= partySize; party++ {
 		if network.GetPartyNumber() != party {
 			shareBundle := numberbundle.NumberBundle{
 				ID: uuid.Must(uuid.NewRandom()).String(),
