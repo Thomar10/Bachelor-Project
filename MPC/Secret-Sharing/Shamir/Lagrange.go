@@ -84,7 +84,7 @@ func computeFullDelta(key int, keys []int) []finite.Number {
 	}
 	var inverseTalker = field.FindInverse(talker, field.GetSize())
 	//Remove the key from the list to calculate the numerator
-	keysWithoutkey := removeElemet(keys, key)
+	keysWithoutkey := removeElement(keys, key)
 
 	permutations := computePermutations(keysWithoutkey)
 	var polynomial = make([]finite.Number, len(keys))
@@ -143,7 +143,7 @@ func computeDelta(key int, keys []int) finite.Number {
 	}
 	var inverseTalker = field.FindInverse(talker, field.GetSize())
 	//Remove the key from the list to calculate the numerator
-	keysWithoutkey := removeElemet(keys, key)
+	keysWithoutkey := removeElement(keys, key)
 	//Calculate the numerator (simply -j multiplied together with each other for all keys in keysWithoutKey)
 	var polynomial = finite.Number{Prime: big.NewInt(1), Binary: []int{0, 0, 0, 0, 0, 0, 0, 1}}
 	for _, number := range keysWithoutkey {
@@ -161,7 +161,7 @@ func computeDelta(key int, keys []int) finite.Number {
 }
 
 //Multiplies all the permutation sets of a given size with each other
-//Ex [2, 3] and [3, 4] -> (-2*-3)+(-3*-4) -> result
+//Ex [[2, 3], [3, 4], [1]] -> (-2*-3)+(-3*-4)
 func multipleAllWithSize(k int, permutations [][]int) finite.Number {
 	result := finite.Number{Prime: big.NewInt(0), Binary: []int{0, 0, 0, 0, 0, 0, 0, 0}}
 	for _, perm := range permutations {
@@ -176,7 +176,7 @@ func multipleAllWithSize(k int, permutations [][]int) finite.Number {
 						Prime: field.GetSize().Prime,
 						Binary: Binary.ConvertXToByte(number)})
 				subresult = field.Mul(subresult, negNumber)
-							}
+			}
 			result = field.Add(result, subresult)
 		}
 	}
@@ -184,7 +184,7 @@ func multipleAllWithSize(k int, permutations [][]int) finite.Number {
 }
 
 //Calculate all the subset permutations for a given array except the list itself
-//Sorted from smallest to biggest
+//Sorted from smallest to biggest lengths
 //Ex: array 3, 4, 5 returns
 //[[3], [4], [5], [3, 4], [3, 5], [4, 5]]
 func computePermutations(keys []int) [][]int {
@@ -221,7 +221,7 @@ func computePermutations(keys []int) [][]int {
 	}
 
 	//https://stackoverflow.com/questions/42629541/go-lang-sort-a-2d-array
-	//Sort the array from smallest to biggest
+	//Sort the array from smallest to biggest lengths
 	for k := 0; k < len(keys); k++ {
 		sort.SliceStable(permutationsInts, func(i, j int) bool {
 			return len(permutationsInts[i]) < len(permutationsInts[j])
@@ -231,7 +231,7 @@ func computePermutations(keys []int) [][]int {
 }
 
 //Removes an element from the list
-func removeElemet(a []int, elem int) []int {
+func removeElement(a []int, elem int) []int {
 	index := 0
 	for i := 0; i < len(a); i++ {
 		if a[i] == elem {

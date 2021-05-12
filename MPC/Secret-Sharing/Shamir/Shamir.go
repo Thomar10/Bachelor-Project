@@ -295,8 +295,6 @@ func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, s secrets
 		}
 		gateMutex.Unlock()
 	}
-
-
 }
 
 func processedMultReturn(input1, input2 finite.Number, gate Circuit.Gate) finite.Number{

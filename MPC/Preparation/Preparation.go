@@ -47,6 +47,7 @@ var r2tOpen = make(map[int]finite.Number)
 var bundleCounter = 1
 var partySize int
 var myPartyNumber int
+var field finite.Finite
 
 func (r Receiver) Receive(bundle bundle.Bundle) {
 	switch match := bundle.(type) {
@@ -177,40 +178,42 @@ func RegisterReceiver() {
 
 
 //Creates all the triples needed to run the MPC-protocol with active or passive corrupt parties
-func Prepare(circuit Circuit.Circuit, field finite.Finite, corrupts int, shamir secretsharing.Secret_Sharing, active bool) {
+func Prepare(circuit Circuit.Circuit, f finite.Finite, corrupts int, shamir secretsharing.Secret_Sharing, active bool) {
+	field = f
 	partySize = circuit.PartySize
 	myPartyNumber = network.GetPartyNumber()
-	createHyperMatrix(partySize, field)
+
+	createHyperMatrix(partySize)
 	multiGates := countMultiGates(circuit)
 
 	if active {
-		triplesActive(multiGates, corrupts, field)
+		triplesActive(multiGates, corrupts)
 	}else {
-		triplesPassive(multiGates, corrupts, field)
+		triplesPassive(multiGates, corrupts)
 	}
 	shamir.SetTriple(x, y, z)
 }
 
 //Computes the triples if the corrupts is active - therefore it also checks
 //if any of the parties is cheating
-func triplesActive(multiGates int, corrupts int, field finite.Finite) {
+func triplesActive(multiGates int, corrupts int) {
 	for i := 1; i <= multiGates; i += corrupts * partySize * (partySize - corrupts - 1) {
 		for j := 1; j <= partySize; j++ {
 			//Gate can be seen as an unique identifier.
 			//We simply call it gate to be consistent with naming
 			gate := j + partySize * (i - 1)
-			random := createRandomNumber(field)
-			yList := createRandomTuple(partySize, field, corrupts, gate, random, "y", true)
-			random = createRandomNumber(field)
-			xList := createRandomTuple(partySize, field, corrupts, gate, random, "x", true)
-			random = createRandomNumber(field)
-			rList := createRandomTuple(partySize, field, corrupts, gate, random, "r", true)
-			r2tList := createRandomTuple(2*partySize, field, corrupts, gate, random, "r2t", true)
+			random := createRandomNumber()
+			yList := createRandomTuple(partySize, corrupts, gate, random, "y", true)
+			random = createRandomNumber()
+			xList := createRandomTuple(partySize, corrupts, gate, random, "x", true)
+			random = createRandomNumber()
+			rList := createRandomTuple(partySize, corrupts, gate, random, "r", true)
+			r2tList := createRandomTuple(2*partySize, corrupts, gate, random, "r2t", true)
 			//check if the lists are consistent
-			checkConsistency(corrupts, gate, yList,  "y", j, field)
-			checkConsistency(corrupts, gate, xList,  "x", j, field)
-			checkConsistency(corrupts, gate, rList,  "r", j, field)
-			checkConsistency(corrupts, gate, r2tList, "r2t", j, field)
+			checkConsistency(corrupts, gate, yList,  "y", j)
+			checkConsistency(corrupts, gate, xList,  "x", j)
+			checkConsistency(corrupts, gate, rList,  "r", j)
+			checkConsistency(corrupts, gate, r2tList, "r2t", j)
 			//All the lists were consistent if we got to here. Put them into the correct maps from 1, ..., needed gates
 			for k, _ := range yList[2*corrupts:] {
 				inputPlace := k + (partySize-corrupts-1)*(j-1) + (i - 1) + 1
@@ -226,13 +229,13 @@ func triplesActive(multiGates int, corrupts int, field finite.Finite) {
 		}
 	}
 	//Calculate z in the triple
-	computeZ(len(y), field, partySize)
+	computeZ()
 }
 
 
 //Checks if the shares are shared on a t-degree polynomial. If p <= corrupts it also checks for the result
 //value of the y-list (list gotten from multiplying share onto the HIM)
-func checkConsistency(corrupts int, gate int, yList []finite.Number, randomType string, p int, field finite.Finite) {
+func checkConsistency(corrupts int, gate int, yList []finite.Number, randomType string, p int) {
 	//Distributes the shares as described in the protocol in the report
 	if p <= 2 * corrupts {
 		prepMutex.Lock()
@@ -250,7 +253,7 @@ func checkConsistency(corrupts int, gate int, yList []finite.Number, randomType 
 	if myPartyNumber <= 2*corrupts && myPartyNumber == p {
 		for {
 			checkShareYMutex.Lock()
-			consistencyCheckOnMap(corrupts, gate, randomType, field, checkShareMapY)
+			consistencyCheckOnMap(corrupts, gate, randomType, checkShareMapY)
 			checkShareYMutex.Unlock()
 			break
 		}
@@ -258,16 +261,16 @@ func checkConsistency(corrupts int, gate int, yList []finite.Number, randomType 
 	} else if p == myPartyNumber {
 		for {
 			checkShareXMutex.Lock()
-			consistencyCheckOnMap(corrupts, gate, randomType, field, checkShareMapX)
+			consistencyCheckOnMap(corrupts, gate, randomType, checkShareMapX)
 			checkShareXMutex.Unlock()
 			break
 		}
 	}
 }
 
-func consistencyCheckOnMap(corrupts int, gate int, randomType string, field finite.Finite, checkMap map[int]map[int]map[string][]finite.Number) {
+func consistencyCheckOnMap(corrupts int, gate int, randomType string, checkMap map[int]map[int]map[string][]finite.Number) {
 	for _, shareList := range checkMap[gate] {
-		if listFilledUp(shareList[randomType], field) {
+		if listFilledUp(shareList[randomType]) {
 			reconstructMap := make(map[int]finite.Number)
 			for i, v := range shareList[randomType] {
 				reconstructMap[i+1] = v
@@ -293,16 +296,16 @@ func consistencyCheckOnMap(corrupts int, gate int, randomType string, field fini
 }
 
 //Computes the triples for passive case
-func triplesPassive(multiGates int, corrupts int, field finite.Finite) {
+func triplesPassive(multiGates int, corrupts int) {
 	//Compute the values / triples we need to create our triple (x, y, z)
 	for i := 1; i <= multiGates; i += partySize - corrupts {
-		random := createRandomNumber(field)
-		yList := createRandomTuple(partySize, field, corrupts, i, random, "y", false)
-		random = createRandomNumber(field)
-		xList := createRandomTuple(partySize, field, corrupts, i, random, "x", false)
-		random = createRandomNumber(field)
-		rList := createRandomTuple(partySize, field, corrupts, i, random, "r", false)
-		r2tList := createRandomTuple(2*partySize, field, corrupts, i, random, "r2t", false)
+		random := createRandomNumber()
+		yList := createRandomTuple(partySize, corrupts, i, random, "y", false)
+		random = createRandomNumber()
+		xList := createRandomTuple(partySize,corrupts, i, random, "x", false)
+		random = createRandomNumber()
+		rList := createRandomTuple(partySize, corrupts, i, random, "r", false)
+		r2tList := createRandomTuple(2*partySize, corrupts, i, random, "r2t", false)
 		for j, _ := range yList {
 			y[j+i] = yList[j]
 			x[j+i] = xList[j]
@@ -311,12 +314,12 @@ func triplesPassive(multiGates int, corrupts int, field finite.Finite) {
 		}
 	}
 	//Calculate z in the triple
-	computeZ(len(y), field, partySize)
+	computeZ()
 }
 
 //Computes the last muskets of the triple (z)
-func computeZ(k int, field finite.Finite, partySize int) {
-	for i := 1; i <= k; i++ {
+func computeZ() {
+	for i := 1; i <= len(y); i++ {
 		xy := field.Mul(x[i], y[i])
 		r2tInv := field.Mul(r2t[i], finite.Number{
 			Prime:  big.NewInt(-1),
@@ -387,14 +390,14 @@ func listUnFilled(size int) []finite.Number {
 
 //Computes the shares for the random value and distributes the value accordingly
 //Waits thereafter for having received all the shares to compute the random values from the matrix
-func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, number finite.Number, randomType string, active bool) []finite.Number {
+func createRandomTuple(partySize int, corrupts int, i int, number finite.Number, randomType string, active bool) []finite.Number {
 	randomShares := field.ComputeShares(partySize, number, corrupts)
 	//randomShares[len(randomShares) - 1] = finite.Number{Prime: big.NewInt(10)}
 	distributeShares(randomShares, i, randomType)
 	for {
 		isFilledUp := false
 		prepMutex.Lock()
-		isFilledUp = listFilledUp(prepShares[i][randomType], field)
+		isFilledUp = listFilledUp(prepShares[i][randomType])
 		prepMutex.Unlock()
 		if isFilledUp {
 			break
@@ -404,24 +407,24 @@ func createRandomTuple(partySize int, field finite.Finite, corrupts int, i int, 
 	prepMutex.Lock()
 	xShares = prepShares[i][randomType]
 	prepMutex.Unlock()
-	randomness := extractRandomness(xShares, matrix, field, corrupts, active)
+	randomness := extractRandomness(xShares, matrix, corrupts, active)
 	return randomness
 }
 
 
 //Checks if the list is filled up with correct values
-func listFilledUp(list []finite.Number, field finite.Finite) bool {
+func listFilledUp(list []finite.Number) bool {
 	return field.FilledUp(list)
 }
 
 //Creates a random number
-func createRandomNumber(field finite.Finite) finite.Number {
+func createRandomNumber() finite.Number {
 	return field.CreateRandomNumber()
 }
 
 //Create the Hyper invertible matrix as described in the report
 
-func createHyperMatrix(size int, field finite.Finite) {
+func createHyperMatrix(size int) {
 	a := make([]finite.Number, size)
 	b := make([]finite.Number, size)
 	//Compute distinct a and b values. a = 1, ..., partySize. b = partySize + 1, ... , 2 * partySize + 1
@@ -472,7 +475,7 @@ func createHyperMatrix(size int, field finite.Finite) {
 //Returns an array as the result of multiplying the vector of shares received onto the matrix
 //If its for passive corrupts returns y_1, ..., y_n-t
 //If its for active corrupts return y_1, ..., y_n
-func extractRandomness(xVec []finite.Number, matrix [][]finite.Number, field finite.Finite, corrupts int, active bool) []finite.Number {
+func extractRandomness(xVec []finite.Number, matrix [][]finite.Number, corrupts int, active bool) []finite.Number {
 	ye := make([]finite.Number, len(xVec))
 	for i := 0; i < len(matrix); i++ {
 		ye[i] = finite.Number{Prime: big.NewInt(0), Binary: Binary.ConvertXToByte(0)}
@@ -483,7 +486,7 @@ func extractRandomness(xVec []finite.Number, matrix [][]finite.Number, field fin
 	}
 	if active {
 		return ye
-	}else {
+	} else {
 		return ye[:len(xVec) - corrupts]
 	}
 }
