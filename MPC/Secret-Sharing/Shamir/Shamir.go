@@ -9,7 +9,6 @@ import (
 	network "MPC/Network"
 	secretsharing "MPC/Secret-Sharing"
 	_ "crypto/rand"
-	"fmt"
 	"math/big"
 	"sync"
 
@@ -75,6 +74,8 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			dOpenMutex.Lock()
 			dOpenMap[match.Gate] = match.Shares[1]
 			dOpenMutex.Unlock()
+		} else if match.Type == "Panic" {
+			panic("Someone tried to cheat in the protocol!")
 		}
 	}
 }
@@ -267,7 +268,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 				if isConsistent {
 					result = field.ComputeFieldResult(outputGates, polynomials)
 				}else {
-					fmt.Println("REEEEEEEEEE MOAR!")
+					distributePanic()
 				}
 				break
 			}
@@ -385,9 +386,7 @@ func reconstructED(e, d finite.Number, gate Circuit.Gate) {
 		eOpenPolynomial := ReconstructPolynomial(eMultGate, corrupts)
 		for i, v := range eMultGate {
 			if !ShareIsOnPolynomial(v, eOpenPolynomial, i) {
-				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+				distributePanic()
 			}
 		}
 		eOpen := field.CalcPoly(eOpenPolynomial, 0)
@@ -407,9 +406,7 @@ func reconstructED(e, d finite.Number, gate Circuit.Gate) {
 		dOpenPolynomial := ReconstructPolynomial(dMultGate, corrupts)
 		for i, v := range dMultGate {
 			if !ShareIsOnPolynomial(v, dOpenPolynomial, i) {
-				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+				distributePanic()
 			}
 		}
 		dOpen := field.CalcPoly(dOpenPolynomial, 0)
@@ -490,6 +487,21 @@ func distributeED(shares []finite.Number, gate int, forAll bool) {
 			dMultMutex.Unlock()
 		} else {
 			network.Send(shareBundle, (gate % partySize) + 1 )
+		}
+	}
+}
+
+//Distributes a panic when someone is caught cheating
+func distributePanic() {
+	for party := 1; party <= partySize; party++ {
+		shareBundle := numberbundle.NumberBundle{
+			ID:     uuid.Must(uuid.NewRandom()).String(),
+			Type:   "Panic",
+		}
+		if myPartyNumber == party {
+			panic("Someone tried to cheat in the protocol!")
+		}else {
+			network.Send(shareBundle, party)
 		}
 	}
 }

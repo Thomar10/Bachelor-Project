@@ -24,14 +24,13 @@ func main() {
 	secretSharingg.SetField(finiteFieldf)
 
 	sharesMap := make(map[int]finite.Number)
-	shares := secretSharingg.ComputeShares(7, finite.Number{Prime: big.NewInt(5)})
-	//shares := []finite.Number{{Prime: big.NewInt(1)},{Prime: big.NewInt(12)}, {Prime: big.NewInt(0)}, {Prime: big.NewInt(0)}}
-	for i := 2; i < len(shares); i ++ {
+	shares := []finite.Number{{Prime: big.NewInt(10)},{Prime: big.NewInt(15)}, {Prime: big.NewInt(69)}, {Prime: big.NewInt(42)}, {Prime: big.NewInt(29)}}
+	for i := 0; i < len(shares); i ++ {
 		sharesMap[i + 1] = shares[i]
 	}
 
-	Repoly := Shamir.ReconstructPolynomial(sharesMap, 3)
-	fmt.Println("The share is on the poly", Shamir.ShareIsOnPolynomial(shares[1], Repoly, 2))
+	Repoly := Shamir.ReconstructPolynomial(sharesMap, 4)
+	fmt.Println("The repoly", Repoly)
 }
 
 func bitAdd(b1 []int, b2 []int) []int {

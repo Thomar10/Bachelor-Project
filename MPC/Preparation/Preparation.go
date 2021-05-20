@@ -9,7 +9,6 @@ import (
 	network "MPC/Network"
 	secretsharing "MPC/Secret-Sharing"
 	"MPC/Secret-Sharing/Shamir"
-	"fmt"
 	"math/big"
 	"sync"
 
@@ -115,6 +114,8 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 				checkShareMapY[match.Gate] = checkYMap
 				checkShareYMutex.Unlock()
 			}
+		} else if match.Type == "Panic" {
+			panic("Someone tried to cheat in the protocol!")
 		}
 	}
 }
@@ -283,12 +284,7 @@ func consistencyCheckOnMap(corrupts int, gate int, randomType string, checkMap m
 			}
 			for i, v := range shareList[randomType] {
 				if !Shamir.ShareIsOnPolynomial(v, Polynomial, i+1) {
-					fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-					fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-					fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-					fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-					fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-					fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+					distributePanic()
 				}
 			}
 		}
@@ -491,6 +487,20 @@ func extractRandomness(xVec []finite.Number, matrix [][]finite.Number, corrupts 
 	}
 }
 
+//Distributes a panic when someone is caught cheating
+func distributePanic() {
+	for party := 1; party <= partySize; party++ {
+		shareBundle := numberbundle.NumberBundle{
+			ID:     uuid.Must(uuid.NewRandom()).String(),
+			Type:   "Panic",
+		}
+		if myPartyNumber == party {
+			panic("Someone tried to cheat in the protocol!")
+		}else {
+			network.Send(shareBundle, party)
+		}
+	}
+}
 
 //Distribute all the shares used to check if its a consistent polynomial
 //If the length of shares is larger than party size its because the list
@@ -620,5 +630,4 @@ func distributeR2T(share finite.Number, gate int, forAll bool) {
 			network.Send(shareBundle, bundleCounter)
 		}
 	}
-
 }
