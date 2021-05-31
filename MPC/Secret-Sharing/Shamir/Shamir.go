@@ -9,7 +9,6 @@ import (
 	network "MPC/Network"
 	secretsharing "MPC/Secret-Sharing"
 	_ "crypto/rand"
-	"fmt"
 	"math/big"
 	"sync"
 
@@ -75,11 +74,12 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 			dOpenMutex.Lock()
 			dOpenMap[match.Gate] = match.Shares[1]
 			dOpenMutex.Unlock()
+		} else if match.Type == "Panic" {
+			panic("Someone tried to cheat in the protocol!")
 		}
 	}
 }
 
-var function string
 var wires = make(map[int]finite.Number)
 var gateMult = make(map[int]map[int]finite.Number)
 var eMult = make(map[int]map[int]finite.Number)
@@ -105,7 +105,6 @@ var field finite.Finite
 
 
 func (s Shamir) ResetSecretSharing() {
-	function = ""
 	wires = make(map[int]finite.Number)
 	gateMult = make(map[int]map[int]finite.Number)
 	eMult = make(map[int]map[int]finite.Number)
@@ -266,7 +265,7 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 				if isConsistent {
 					result = field.ComputeFieldResult(outputGates, polynomials)
 				}else {
-					fmt.Println("REEEEEEEEEE MOAR!")
+					distributePanic()
 				}
 				break
 			}
@@ -386,9 +385,7 @@ func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
 		eOpenPolynomial := ReconstructPolynomial(eMultGate, corrupts)
 		for i, v := range eMultGate {
 			if !ShareIsOnPolynomial(v, eOpenPolynomial, i) {
-				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+				distributePanic()
 			}
 		}
 		eOpen := field.CalcPoly(eOpenPolynomial, 0)
@@ -408,9 +405,7 @@ func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
 		dOpenPolynomial := ReconstructPolynomial(dMultGate, corrupts)
 		for i, v := range dMultGate {
 			if !ShareIsOnPolynomial(v, dOpenPolynomial, i) {
-				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-				fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+				distributePanic()
 			}
 		}
 		dOpen := field.CalcPoly(dOpenPolynomial, 0)
@@ -575,4 +570,19 @@ func removeGate(circuit Circuit.Circuit, i int) []Circuit.Gate {
 	b[i] = b[len(b)-1] // Copy last element to index i.
 	b = b[:len(b)-1]   // Truncate slice.
 	return b
+}
+
+func distributePanic() {
+	for party := 1; party <= network.GetParties(); party++ {
+		shareBundle := numberbundle.NumberBundle{
+			ID:     uuid.Must(uuid.NewRandom()).String(),
+			Type:   "Panic",
+		}
+		if network.GetPartyNumber() == party {
+			//To nothing
+		}else {
+			network.Send(shareBundle, party)
+		}
+	}
+	panic("Someone tried to cheat in the protocol!")
 }

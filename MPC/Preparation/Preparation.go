@@ -9,7 +9,6 @@ import (
 	network "MPC/Network"
 	secretsharing "MPC/Secret-Sharing"
 	"MPC/Secret-Sharing/Shamir"
-	"fmt"
 	"math/big"
 	"sync"
 
@@ -112,6 +111,8 @@ func (r Receiver) Receive(bundle bundle.Bundle) {
 				checkShareMapY[match.Gate] = checkYMap
 				checkShareYMutex.Unlock()
 			}
+		} else if match.Type == "Panic" {
+			panic("Someone tried to cheat in the protocol!")
 		}
 	}
 }
@@ -277,12 +278,7 @@ func consistencyCheckOnMap(corrupts int, gate int, randomType string, field fini
 			}
 			for i, v := range shareList[randomType] {
 				if !Shamir.ShareIsOnPolynomial(v, Polynomial, i+1) {
-					fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-					fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-					fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-					fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-					fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-					fmt.Println("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+					distributePanic()
 				}
 			}
 		}
@@ -615,4 +611,18 @@ func distributeR2T(share finite.Number, partySize int, gate int, forAll bool) {
 		}
 	}
 
+}
+func distributePanic() {
+	for party := 1; party <= network.GetParties(); party++ {
+		shareBundle := numberbundle.NumberBundle{
+			ID:     uuid.Must(uuid.NewRandom()).String(),
+			Type:   "Panic",
+		}
+		if network.GetPartyNumber() == party {
+			//To nothing
+		}else {
+			network.Send(shareBundle, party)
+		}
+	}
+	panic("Someone tried to cheat in the protocol!")
 }
