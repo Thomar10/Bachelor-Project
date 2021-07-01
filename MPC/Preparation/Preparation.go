@@ -9,6 +9,7 @@ import (
 	network "MPC/Network"
 	secretsharing "MPC/Secret-Sharing"
 	"MPC/Secret-Sharing/Shamir"
+	"fmt"
 	"math/big"
 	"sync"
 
@@ -26,6 +27,7 @@ var matrix [][]finite.Number
 var x = make(map[int]finite.Number)
 var y = make(map[int]finite.Number)
 var z = make(map[int]finite.Number)
+var zMutex = &sync.Mutex{}
 
 var r = make(map[int]finite.Number)
 var r2t = make(map[int]finite.Number)
@@ -291,6 +293,7 @@ func consistencyCheckOnMap(corrupts int, gate int, randomType string, checkMap m
 
 //Computes the triples for passive case
 func triplesPassive(multiGates int, corrupts int) {
+	var wg sync.WaitGroup
 	//Compute the values / triples we need to create our triple (x, y, z)
 	for i := 1; i <= multiGates; i += partySize - corrupts {
 		random := createRandomNumber()
@@ -300,15 +303,42 @@ func triplesPassive(multiGates int, corrupts int) {
 		random = createRandomNumber()
 		rList := createRandomTuple(partySize, corrupts, i, random, "r", false)
 		r2tList := createRandomTuple(2*partySize, corrupts, i, random, "r2t", false)
-		for j, _ := range yList {
+		for j := range yList {
 			y[j+i] = yList[j]
 			x[j+i] = xList[j]
 			r[j+i] = rList[j]
 			r2t[j+i] = r2tList[j]
+			wg.Add(1)
+			//fmt.Println("Calling newZ with", j+i)
+			go newcomputeZ(yList[j], xList[j], r2tList[j], rList[j], j+i, &wg)
 		}
 	}
+	wg.Wait()
 	//Calculate z in the triple
-	computeZ()
+	//computeZ()
+}
+func newcomputeZ(y, x, r2t, r finite.Number, index int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	xy := field.Mul(x, y)
+	r2tInv := field.Mul(r2t, finite.Number{
+		Prime:  big.NewInt(-1),
+		Binary: []int{0, 0, 0, 0, 0, 0, 0, 1}, //-1
+	})
+	xyr2t := field.Add(xy, r2tInv)
+	reconstructR2T(xyr2t, index)
+	for {
+		r2tOpenMutex.Lock()
+		xyr, found := r2tOpen[index]
+		r2tOpenMutex.Unlock()
+		if found {
+			resZ := field.Add(r, xyr)
+			//zMutex.Lock()
+			fmt.Println("ADDING Z")
+			z[index] = resZ
+			//zMutex.Unlock()
+			break
+		}
+	}
 }
 
 //Computes the last muskets of the triple (z)
@@ -473,7 +503,6 @@ func extractRandomness(xVec []finite.Number, matrix [][]finite.Number, corrupts 
 		ye[i] = finite.Number{Prime: big.NewInt(0), Binary: Binary.ConvertXToByte(0)}
 		for j := 0; j < len(matrix[i]); j++ {
 			ye[i] = field.Add(ye[i], field.Mul(matrix[i][j], xVec[j]))
-
 		}
 	}
 	if active {

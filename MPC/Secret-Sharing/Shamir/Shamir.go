@@ -9,6 +9,7 @@ import (
 	network "MPC/Network"
 	secretsharing "MPC/Secret-Sharing"
 	_ "crypto/rand"
+	"fmt"
 	"math/big"
 	"sync"
 
@@ -148,6 +149,8 @@ func (s Shamir) SetTriple(xMap, yMap, zMap map[int]finite.Number) {
 	x = xMap
 	y = yMap
 	z = zMap
+	fmt.Println(len(y))
+	fmt.Println(len(z))
 }
 
 func (s Shamir) RegisterReceiver() {
