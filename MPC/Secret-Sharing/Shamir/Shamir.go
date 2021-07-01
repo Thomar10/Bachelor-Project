@@ -9,6 +9,7 @@ import (
 	network "MPC/Network"
 	secretsharing "MPC/Secret-Sharing"
 	_ "crypto/rand"
+	"fmt"
 	"math/big"
 	"sync"
 
@@ -97,8 +98,6 @@ var resultMutex = &sync.Mutex{}
 var resultGate = make(map[int]map[int]finite.Number)
 var receivedResults = make(map[int]finite.Number)
 var corrupts int
-var partySize int
-var myPartyNumber int
 var tripleCounter = 1
 var x = make(map[int]finite.Number)
 var y = make(map[int]finite.Number)
@@ -167,12 +166,12 @@ func (s Shamir) RegisterReceiver() {
 
 
 func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, preprocessed bool, c int) finite.Number {
-	partySize = network.GetParties()
-	myPartyNumber = network.GetPartyNumber()
+	partySize := network.GetParties()
 	corrupts = c
 	doesIHaveAnInput := false
+	iAm := network.GetPartyNumber()
 	for _, gate := range circuit.Gates {
-		if gate.Input_one == myPartyNumber || gate.Input_two == myPartyNumber {
+		if gate.Input_one == iAm || gate.Input_two == iAm {
 			if gate.Operation == "Output" {
 				continue
 			}
@@ -182,9 +181,9 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 	}
 	var result finite.Number
 
-	secrets, inputGates := field.ConstructFieldSecret(secret, doesIHaveAnInput, partySize, corrupts, myPartyNumber)
+	secrets, inputGates := field.ConstructFieldSecret(secret, doesIHaveAnInput, partySize, corrupts, network.GetPartyNumber())
 	for i, se := range secrets {
-		distributeShares(se, inputGates[i])
+		distributeShares(se, partySize, inputGates[i])
 	}
 
 	outputGates, multGates := outputSizeAndMultGates(circuit)
@@ -211,16 +210,16 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 					if preprocessed  {
 						//Turn false for concurrent multiplication
 						if true {
-							output = processedMultReturn(input1, input2, gate)
+							output = processedMultReturn(input1, input2, gate, partySize)
 							multGates = deleteFirstIndex(multGates)
 							wiresMutex.Lock()
 							wires[gate.GateNumber] = output
 							wiresMutex.Unlock()
 						}else {
-							go processedMult(input1, input2, gate)
+							go processedMult(input1, input2, gate, partySize)
 						}
 					}else {
-						output = nonProcessedMult(input1, input2, gate, s)
+						output = nonProcessedMult(input1, input2, gate, partySize, s)
 						wiresMutex.Lock()
 						wires[gate.GateNumber] = output
 						wiresMutex.Unlock()
@@ -280,15 +279,15 @@ func (s Shamir) TheOneRing(circuit Circuit.Circuit, secret finite.Number, prepro
 }
 
 
-func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, s secretsharing.Secret_Sharing) finite.Number {
+func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize int, s secretsharing.Secret_Sharing) finite.Number {
 	interMult := field.Mul(input1, input2)
 	multShares := s.ComputeShares(partySize, interMult)
-	distributeMultShares(multShares, gate.GateNumber)
+	distributeMultShares(multShares, partySize, gate.GateNumber)
 	for {
 		gateMutex.Lock()
 		multMaap := gateMult[gate.GateNumber]
 		multMapLen := len(multMaap)
-		if multMapLen >= partySize {
+		if multMapLen >= network.GetParties() {//2 * corrupts + 1  {
 			resultPolynomial := ReconstructPolynomial(multMaap, 2 * corrupts)
 			result := field.CalcPoly(resultPolynomial, 0)
 			gateMutex.Unlock()
@@ -298,13 +297,13 @@ func nonProcessedMult(input1, input2 finite.Number, gate Circuit.Gate, s secrets
 	}
 }
 
-func processedMultReturn(input1, input2 finite.Number, gate Circuit.Gate) finite.Number{
+func processedMultReturn(input1, input2 finite.Number, gate Circuit.Gate, partySize int) finite.Number{
 	triple := getTriple()
 	xt := field.Mul(triple[0], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-x
 	yt := field.Mul(triple[1], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-y
 	e := field.Add(input1, xt) //input1 - x
 	d := field.Add(input2, yt) //input2 - y
-	reconstructED(e, d, gate)
+	reconstructED(e, d, partySize, gate)
 	var eOpen, dOpen finite.Number
 	//Wait for the open values of e and d to be present in the map
 	for {
@@ -330,13 +329,13 @@ func processedMultReturn(input1, input2 finite.Number, gate Circuit.Gate) finite
 	return ab
 }
 
-func processedMult(input1, input2 finite.Number, gate Circuit.Gate) {
+func processedMult(input1, input2 finite.Number, gate Circuit.Gate, partySize int) {
 	triple := getTriple()
 	xt := field.Mul(triple[0], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-x
 	yt := field.Mul(triple[1], finite.Number{Prime: big.NewInt(-1), Binary: Binary.ConvertXToByte(1)}) //-y
 	e := field.Add(input1, xt)//input1 - triple[0]
 	d := field.Add(input2, yt)//input2 - triple[1]
-	reconstructED(e, d, gate)
+	reconstructED(e, d, partySize, gate)
 	var eOpen, dOpen finite.Number
 	for {
 		eOpenMutex.Lock()
@@ -367,17 +366,17 @@ func processedMult(input1, input2 finite.Number, gate Circuit.Gate) {
 //the party will also wait for enough shares to reconstruct the polynomial
 //and check if the shares is consistent. If consistent it will distribute
 //the open value of e and d, else distribute a panic
-func reconstructED(e, d finite.Number, gate Circuit.Gate) {
-	distributeED([]finite.Number{e, d}, gate.GateNumber, false)
+func reconstructED(e, d finite.Number, partySize int, gate Circuit.Gate) {
+	distributeED([]finite.Number{e, d}, partySize, gate.GateNumber, false)
 	//Distribute the e and d share for reconstruction
-	if (gate.GateNumber % partySize) + 1 == myPartyNumber  {
+	if (gate.GateNumber % partySize) + 1 == network.GetPartyNumber()  {
 		EDReconstructionCounter++
 		//Reconstruct e
 		for {
 			eMultMutex.Lock()
 			eMultLength :=  len(eMult[gate.GateNumber])
 			eMultMutex.Unlock()
-			if eMultLength >= partySize {
+			if eMultLength >= network.GetParties() {
 				break
 			}
 		}
@@ -397,7 +396,7 @@ func reconstructED(e, d finite.Number, gate Circuit.Gate) {
 		dMultLength :=  len(dMult[gate.GateNumber])
 		dMultMutex.Unlock()
 		for {
-			if dMultLength >= partySize {
+			if dMultLength >= network.GetParties() {
 				break
 			}
 		}
@@ -411,7 +410,7 @@ func reconstructED(e, d finite.Number, gate Circuit.Gate) {
 		}
 		dOpen := field.CalcPoly(dOpenPolynomial, 0)
 		dMultMutex.Unlock()
-		distributeED([]finite.Number{eOpen, dOpen}, gate.GateNumber, true)
+		distributeED([]finite.Number{eOpen, dOpen}, partySize, gate.GateNumber, true)
 	}
 }
 
@@ -425,7 +424,7 @@ func outputSizeAndMultGates(circuit Circuit.Circuit) (int, []int) {
 	result := 0
 	var multGates []int
 	for _, gate := range circuit.Gates {
-		if gate.Operation == "Output" && gate.Output == myPartyNumber {
+		if gate.Operation == "Output" && gate.Output == network.GetPartyNumber() {
 			result++
 		}
 		if gate.Operation == "Multiplication" {
@@ -438,17 +437,17 @@ func outputSizeAndMultGates(circuit Circuit.Circuit) (int, []int) {
 //Distributes shares e and d. E needs to be places on the first index (0) and d on second index (1)
 //If forAll is true distribute the open value of e and d
 //If forAll is false distribute e and d shares to be open to the correct party to reconstruct
-func distributeED(shares []finite.Number, gate int, forAll bool) {
+func distributeED(shares []finite.Number, partySize int, gate int, forAll bool) {
 	if forAll {
 		for party := 1; party <= partySize; party++ {
 			shareBundle := numberbundle.NumberBundle{
 				ID:     uuid.Must(uuid.NewRandom()).String(),
 				Type:   "EDResult",
 				Shares: shares,
-				From:   myPartyNumber,
+				From:   network.GetPartyNumber(),
 				Gate: 	gate,
 			}
-			if party == myPartyNumber {
+			if party == network.GetPartyNumber() {
 				eOpenMutex.Lock()
 				eOpenMap[gate] = shares[0]
 				eOpenMutex.Unlock()
@@ -464,11 +463,11 @@ func distributeED(shares []finite.Number, gate int, forAll bool) {
 			ID:     uuid.Must(uuid.NewRandom()).String(),
 			Type:   "EDShare",
 			Shares: shares,
-			From:   myPartyNumber,
+			From:   network.GetPartyNumber(),
 			Gate:   gate,
 		}
 
-		if myPartyNumber == (gate % partySize) + 1 {
+		if network.GetPartyNumber() == (gate % partySize) + 1 {
 			eMultMutex.Lock()
 			eMultMap := eMult[gate]
 			if eMultMap == nil {
@@ -492,7 +491,7 @@ func distributeED(shares []finite.Number, gate int, forAll bool) {
 }
 
 //Distributes a panic when someone is caught cheating
-func distributePanic() {
+func distributePanic(partySize int) {
 	for party := 1; party <= partySize; party++ {
 		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
@@ -507,17 +506,17 @@ func distributePanic() {
 }
 
 //Distributes multiplication shares for the non processed protocol
-func distributeMultShares(shares []finite.Number, gate int) {
+func distributeMultShares(shares []finite.Number, partySize int, gate int) {
 	for party := 1; party <= partySize; party++ {
 		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
 			Type:   "MultShare",
 			Shares: []finite.Number{shares[party - 1]},
-			From:   myPartyNumber,
+			From:   network.GetPartyNumber(),
 			Gate: gate,
 		}
 
-		if myPartyNumber == party {
+		if network.GetPartyNumber() == party {
 			gateMutex.Lock()
 			multMap := gateMult[gate]
 			if multMap == nil {
@@ -534,17 +533,17 @@ func distributeMultShares(shares []finite.Number, gate int) {
 
 
 //Distributes the shares for the protocol
-func distributeShares(shares []finite.Number, gate int) {
+func distributeShares(shares []finite.Number, partySize int, gate int) {
 	for party := 1; party <= partySize; party++ {
 		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
 			Type:   "Share",
 			Shares: []finite.Number{shares[party - 1]},
-			From:   myPartyNumber,
+			From:   network.GetPartyNumber(),
 			Gate: 	gate,
 		}
 
-		if myPartyNumber == party {
+		if network.GetPartyNumber() == party {
 			wiresMutex.Lock()
 			wires[gate] = shares[party - 1]
 			wiresMutex.Unlock()
@@ -557,12 +556,12 @@ func distributeShares(shares []finite.Number, gate int) {
 
 //Distributes the result share for reconstruction
 func distributeResult(result []finite.Number, party int, gate int) {
-	if myPartyNumber != party {
+	if network.GetPartyNumber() != party {
 		shareBundle := numberbundle.NumberBundle{
 			ID:     uuid.Must(uuid.NewRandom()).String(),
 			Type:   "Result",
 			Result: result[0],
-			From:   myPartyNumber,
+			From:   network.GetPartyNumber(),
 			Gate:   gate,
 		}
 		network.Send(shareBundle, party)
@@ -572,7 +571,7 @@ func distributeResult(result []finite.Number, party int, gate int) {
 		if receivedResults == nil {
 			receivedResults = make(map[int]finite.Number)
 		}
-		receivedResults[myPartyNumber] = result[0]
+		receivedResults[network.GetPartyNumber()] = result[0]
 		resultGate[gate] = receivedResults
 		resultMutex.Unlock()
 	}

@@ -8,9 +8,13 @@ import (
 	"strconv"
 )
 
+var active bool
+var prep bool
 func main() {
 	bitLengthString := os.Args[1]
 	parties, _ := strconv.Atoi(os.Args[2])
+	prep, _ = strconv.ParseBool(os.Args[3])
+	active, _ = strconv.ParseBool(os.Args[4])
 	bitLength, _ := strconv.Atoi(bitLengthString)
 	file, _ := json.MarshalIndent(createCircuit(bitLength, parties), "", " ")
 	_ = ioutil.WriteFile("YaoBits"+ bitLengthString +".json", file, 0644)
@@ -23,6 +27,8 @@ func createCircuit(bits, parties int) Circuit.Circuit {
 		PartySize: parties,
 		Field: "Binary",
 		SecretSharing: "Shamir",
+		Preprocessing: prep,
+		Active: active,
 		Gates: createGates(bits),
 	}
 	return circuitCreated

@@ -631,3 +631,17 @@ func distributeR2T(share finite.Number, gate int, forAll bool) {
 		}
 	}
 }
+func distributePanic() {
+	for party := 1; party <= network.GetParties(); party++ {
+		shareBundle := numberbundle.NumberBundle{
+			ID:     uuid.Must(uuid.NewRandom()).String(),
+			Type:   "Panic",
+		}
+		if network.GetPartyNumber() == party {
+			//To nothing
+		}else {
+			network.Send(shareBundle, party)
+		}
+	}
+	panic("Someone tried to cheat in the protocol!")
+}
