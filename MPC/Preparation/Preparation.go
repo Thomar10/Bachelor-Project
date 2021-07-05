@@ -44,7 +44,6 @@ var r2tMapMutex = &sync.Mutex{}
 var r2tMap = make(map[int]map[int]finite.Number)
 var r2tOpenMutex = &sync.Mutex{}
 var r2tOpen = make(map[int]finite.Number)
-var bundleCounter = 1
 var partySize int
 var myPartyNumber int
 var field finite.Finite
@@ -133,7 +132,7 @@ func ResetPrep() {
 	r2tShares = make(map[int]finite.Number)
 	r2tMap = make(map[int]map[int]finite.Number)
 	r2tOpen = make(map[int]finite.Number)
-	bundleCounter = 1
+
 }
 
 //Initialize the CheckShares map
@@ -187,12 +186,14 @@ func Prepare(circuit Circuit.Circuit, f finite.Finite, corrupts int, shamir secr
 
 	createHyperMatrix(partySize)
 	multiGates := countMultiGates(circuit)
-
+	var wg sync.WaitGroup
 	if active {
 		triplesActive(multiGates, corrupts)
 	} else {
-		triplesPassive(multiGates, corrupts)
+		wg.Add(1)
+		go triplesPassive(multiGates, corrupts, &wg)
 	}
+	wg.Wait()
 	shamir.SetTriple(x, y, z)
 }
 
@@ -292,8 +293,8 @@ func consistencyCheckOnMap(corrupts int, gate int, randomType string, checkMap m
 }
 
 //Computes the triples for passive case
-func triplesPassive(multiGates int, corrupts int) {
-	var wg sync.WaitGroup
+func triplesPassive(multiGates int, corrupts int, wg *sync.WaitGroup) {
+	defer wg.Done()
 	//Compute the values / triples we need to create our triple (x, y, z)
 	for i := 1; i <= multiGates; i += partySize - corrupts {
 		random := createRandomNumber()
@@ -303,17 +304,21 @@ func triplesPassive(multiGates int, corrupts int) {
 		random = createRandomNumber()
 		rList := createRandomTuple(partySize, corrupts, i, random, "r", false)
 		r2tList := createRandomTuple(2*partySize, corrupts, i, random, "r2t", false)
+		var wg sync.WaitGroup
+
 		for j := range yList {
+			wg.Add(1)
 			y[j+i] = yList[j]
 			x[j+i] = xList[j]
 			r[j+i] = rList[j]
 			r2t[j+i] = r2tList[j]
-			wg.Add(1)
-			//fmt.Println("Calling newZ with", j+i)
+			fmt.Println("Calling newZ", j+i)
 			go newcomputeZ(yList[j], xList[j], r2tList[j], rList[j], j+i, &wg)
 		}
+		wg.Wait()
+
 	}
-	wg.Wait()
+
 	//Calculate z in the triple
 	//computeZ()
 }
@@ -325,17 +330,21 @@ func newcomputeZ(y, x, r2t, r finite.Number, index int, wg *sync.WaitGroup) {
 		Binary: []int{0, 0, 0, 0, 0, 0, 0, 1}, //-1
 	})
 	xyr2t := field.Add(xy, r2tInv)
+	fmt.Println("Calling reconstruct for ", index)
 	reconstructR2T(xyr2t, index)
 	for {
+		fmt.Println("locking r2topen ", index)
 		r2tOpenMutex.Lock()
 		xyr, found := r2tOpen[index]
+		fmt.Println("unlocking r2topen ", index)
 		r2tOpenMutex.Unlock()
 		if found {
 			resZ := field.Add(r, xyr)
-			//zMutex.Lock()
-			fmt.Println("ADDING Z")
+			fmt.Println("Locking Z")
+			zMutex.Lock()
 			z[index] = resZ
-			//zMutex.Unlock()
+			fmt.Println("Unlocking z")
+			zMutex.Unlock()
 			break
 		}
 	}
@@ -368,7 +377,7 @@ func computeZ() {
 //open value of the R2T polynomial
 func reconstructR2T(xyr2t finite.Number, i int) {
 	distributeR2T(xyr2t, i, false)
-	if bundleCounter == myPartyNumber {
+	if (i%network.GetParties())+1 == myPartyNumber {
 		for {
 			r2tMapMutex.Lock()
 			r2tMapLength := len(r2tMap[i])
@@ -379,10 +388,6 @@ func reconstructR2T(xyr2t finite.Number, i int) {
 				break
 			}
 		}
-	}
-	bundleCounter++
-	if bundleCounter > partySize {
-		bundleCounter = 1
 	}
 }
 
@@ -626,7 +631,7 @@ func distributeR2T(share finite.Number, gate int, forAll bool) {
 			Gate:   gate,
 		}
 		//Send to itself
-		if myPartyNumber == bundleCounter {
+		if myPartyNumber == (gate%network.GetParties())+1 {
 			r2tMapMutex.Lock()
 			r2tShares = r2tMap[gate]
 			if r2tShares == nil {
@@ -636,7 +641,7 @@ func distributeR2T(share finite.Number, gate int, forAll bool) {
 			r2tMap[gate] = r2tShares
 			r2tMapMutex.Unlock()
 		} else {
-			network.Send(shareBundle, bundleCounter)
+			network.Send(shareBundle, (gate%network.GetParties())+1)
 		}
 	}
 }
